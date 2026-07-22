@@ -1,2 +1,0 @@
-{"id":"1784618537022055","taskName":"cargo build","taskSource":"rust","scope":"backup","definitionType":"cargo","startTime":1784618537022,"status":"Success","endTime":1784618539214,"exitCode":0,"duration":2192}
-{"id":"1784682888026730","taskName":"cargo build","taskSource":"rust","scope":"backup","definitionType":"cargo","startTime":1784682888026,"status":"Success","endTime":1784682890305,"exitCode":0,"duration":2279}
