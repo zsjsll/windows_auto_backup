@@ -1,0 +1,24 @@
+[package]
+name = "rust_snapshot_backup"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+encoding_rs = "0.8.35"
+hostname = "0.4.2"
+
+serde = { version = "1.0.228", features = ["derive", "rc"] }
+time = { version = "0.3.49", features = ["formatting", "macros", "local-offset"] }
+toml = "1.1.2"
+tracing = "0.1.44"
+tracing-appender = "0.2.5"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt", "time", "local-time"] }
+windows-version = "0.1.7"
+
+[features]
+default = ["dbg"]
+dbg = []
+
+[build-dependencies]
+embed-resource = "3.0.9"
+winres = "0.1.12"

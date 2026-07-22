@@ -1,0 +1,32 @@
+log_level = "debug"
+
+
+# SMB 服务器相关配置区块
+[smb]
+server_ip = ""
+share_name = ""
+username = ""
+password = ""
+
+
+# 备份策略配置区块
+[snapshot]
+exe_path = "snapshot64.exe"
+archived_number = 7
+source_dir = "C:"
+# 如果需要 SMB 备份, 需要保持该选项为空
+dist_dir = ""
+
+
+# 将目标硬盘的最大I/O速率限制为10MB/s（1-100）
+limit_IO_rate=100
+# 保存所有扇区，忽略空闲簇信息（维护）
+save_all_sectors = false
+# 如果从计划程序启动，则禁止 <按任何键>
+disable_key = false
+# 测试生成的映像文件（验证校验和是否正确）
+test = false
+# 命令行模式的图形状态显示
+graph = false
+# 备份前清空此驱动器的回收站
+clean_recycle = false
