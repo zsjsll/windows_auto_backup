@@ -11,7 +11,7 @@ pub struct Config {
 }
 
 #[cfg_attr(feature = "dbg", derive(Debug))]
-pub struct Smb(pub Config);
+pub struct Smb(Config);
 
 impl From<Config> for Smb {
     fn from(config: Config) -> Self {

@@ -71,7 +71,7 @@ impl AppConfig {
             PathBuf::from(&self.snapshot.dist_dir)
         }
     }
-    pub fn load_smb(&self) -> smb::Config {
+    pub fn generate_smb_config(&self) -> smb::Config {
         let p = self.get_defaut_path();
         smb::Config {
             url: p,
@@ -80,13 +80,13 @@ impl AppConfig {
         }
     }
 
-    pub fn load_logs(&self) -> logs::Config {
+    pub fn generate_logs_config(&self) -> logs::Config {
         logs::Config {
             log_level: Arc::clone(&self.log_level),
         }
     }
 
-    pub fn load_snapshot(&self) -> snapshot::Config {
+    pub fn generate_snapshot_config(&self) -> snapshot::Config {
         let exe_path = PathBuf::from(r"./").join(&self.snapshot.exe_path);
         // 获取 计算机名字
         let computer_name = hostname::get().unwrap();

@@ -18,14 +18,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let cfg = config::AppConfig::new(CONFIG_PATH)?;
 
-    logs.update_logger_level(&cfg.load_logs());
-    let smb: smb::Smb = cfg.load_smb().into();
+    logs.update_logger_level(&cfg.generate_logs_config());
+    let smb: smb::Smb = cfg.generate_smb_config().into();
 
     smb.connect()?;
 
-    cfg.load_snapshot();
+    cfg.generate_snapshot_config();
 
-    let snapshot: snapshot::Snapshot = cfg.load_snapshot().into();
+    let snapshot: snapshot::Snapshot = cfg.generate_snapshot_config().into();
 
     // snapshot.show_config();
     snapshot.init_backup_dir()?;
