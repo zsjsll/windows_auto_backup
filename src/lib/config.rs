@@ -5,9 +5,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use winreg::RegKey;
-use winreg::enums::*;
-
 use windows_version::{OsVersion, revision};
 
 use super::{logs, smb, snapshot};
@@ -65,7 +62,7 @@ impl AppConfig {
         Ok(config)
     }
 
-    fn get_defaut_path(&self) -> PathBuf {
+    fn get_def_path(&self) -> PathBuf {
         if self.snapshot.dist_dir.is_empty() {
             PathBuf::from(r"\\")
                 .join(&self.smb.server_ip)
@@ -75,7 +72,7 @@ impl AppConfig {
         }
     }
     pub fn generate_smb_config(&self) -> smb::Config {
-        let p = self.get_defaut_path();
+        let p = self.get_def_path();
         smb::Config {
             url: p,
             user: Arc::clone(&self.smb.username),
@@ -90,39 +87,30 @@ impl AppConfig {
     }
     // 获取 系统版本号
     fn get_system_info(&self) -> snapshot::SystemInfo {
-        let hkcu = RegKey::predef(HKEY_LOCAL_MACHINE);
-        let subkey = hkcu.open_subkey(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
-
-        if let Ok(key) = subkey {
-            let major = key
-                .get_value::<u32, _>("CurrentMajorVersionNumber")
-                .ok()
-                .map_or("unknown".to_string(), |val| val.to_string());
-            let minor = key
-                .get_value::<u32, _>("CurrentMinorVersionNumber")
-                .ok()
-                .map_or("unknown".to_string(), |val| val.to_string());
-            let build = key.get_value("CurrentBuildNumber").unwrap_or_default();
-            let ubr = key
-                .get_value::<u32, _>("UBR")
-                .ok()
-                .map_or("unknown".to_string(), |val| val.to_string());
-            let display_version = key.get_value("DisplayVersion").unwrap_or_default();
-            return snapshot::SystemInfo {
-                major,
-                minor,
-                build,
-                ubr,
-                display_version,
-            };
-        }
+        let OsVersion {
+            major,
+            minor,
+            pack,
+            build,
+        } = OsVersion::current();
 
         snapshot::SystemInfo {
-            major: "".to_string(),
-            minor: "".to_string(),
-            build: "".to_string(),
-            ubr: "".to_string(),
-            display_version: "".to_string(),
+            major,
+            minor,
+            pack,
+            build,
+            ubr: revision(),
+        }
+    }
+
+    fn get_time_info(&self) -> snapshot::TimeInfo {
+        // 优先拿本地时间，拿不到就用 UTC 时间兜底
+        let now =
+            time::OffsetDateTime::now_local().unwrap_or_else(|_| time::OffsetDateTime::now_utc());
+        snapshot::TimeInfo {
+            date: now.date(),
+            time: now.time(),
+            offset: now.offset(),
         }
     }
 
@@ -130,32 +118,31 @@ impl AppConfig {
         let exe_path = PathBuf::from(r"./").join(&self.snapshot.exe_path);
         // 获取 计算机名字
         let computer_name = hostname::get().unwrap();
-        let path = self.get_defaut_path().join("snapshot").join(computer_name);
+        let def_path = self.get_def_path().join("snapshot").join(computer_name);
 
         let system_info = self.get_system_info();
         // 获取 系统版本号
-        let mut sys_name = "unknown";
-        let version = OsVersion::current();
-        let ubr = revision().to_string();
+        let sys_name = "unknown";
 
-        dbg!(ubr);
-        // self.get_system_info();
-        // 判断是否是 Windows 11 (Build 22000 及以上)
-        if version >= OsVersion::new(10, 0, 0, 22000) {
-            sys_name = "win11";
-        } else if version >= OsVersion::new(10, 0, 0, 10240) {
-            sys_name = "win10";
-        }
-
+        let time_info = self.get_time_info();
         let timer_format = time::macros::format_description!("[year]-[month]-[day]_[hour][minute]");
         let custom_time = time::OffsetDateTime::now_local()
             .unwrap()
             .format(timer_format)
             .unwrap();
+
+        let backup_file_ext = "sna".to_string();
+        let hash_file_ext = "hsh".to_string();
+
+        let file_ext = snapshot::FileExt {
+            backup: backup_file_ext,
+            hash: hash_file_ext,
+        };
+
         let dist_name = format!("{sys_name}_{custom_time}.sna");
         let hash_name = format!("{sys_name}_{custom_time}.hsh");
-        let dist_path = path.join(dist_name);
-        let hash_path = path.join(hash_name);
+        let dist_path = def_path.join(dist_name);
+        let hash_path = def_path.join(hash_name);
 
         let mut args: Vec<String> = Vec::with_capacity(10);
 
@@ -183,11 +170,15 @@ impl AppConfig {
             self.snapshot.graph            => "-G",
             self.snapshot.clean_recycle    => "-R",
         );
+
         snapshot::Config {
             exe_path,
+            def_path,
             args,
             archived_number: self.snapshot.archived_number,
             system_info,
+            time_info,
+            file_ext,
         }
     }
 }

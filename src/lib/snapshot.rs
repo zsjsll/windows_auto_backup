@@ -6,21 +6,40 @@ use std::process::Command;
 use std::fs;
 use std::io;
 
+use time::Date;
+use time::Time;
+use time::UtcOffset;
+
 #[cfg_attr(feature = "dbg", derive(Debug))]
 pub struct Config {
     pub exe_path: PathBuf,
+    pub def_path: PathBuf,
     pub args: Vec<String>,
     pub archived_number: usize,
     pub system_info: SystemInfo,
+    pub time_info: TimeInfo,
+    pub file_ext: FileExt,
 }
 
 #[cfg_attr(feature = "dbg", derive(Debug))]
 pub struct SystemInfo {
-    pub major: String,
-    pub minor: String,
-    pub build: String,
-    pub ubr: String,             // 补丁小版本号，例如 3880
-    pub display_version: String, // 例如 "23H2"
+    pub major: u32,
+    pub minor: u32,
+    pub pack: u32,
+    pub build: u32,
+    pub ubr: u32,
+}
+#[cfg_attr(feature = "dbg", derive(Debug))]
+pub struct TimeInfo {
+    pub date: Date,
+    pub time: Time,
+    pub offset: UtcOffset,
+}
+
+#[cfg_attr(feature = "dbg", derive(Debug))]
+pub struct FileExt {
+    pub backup: String,
+    pub hash: String,
 }
 
 #[cfg_attr(feature = "dbg", derive(Debug))]
