@@ -11,6 +11,16 @@ pub struct Config {
     pub exe_path: PathBuf,
     pub args: Vec<String>,
     pub archived_number: usize,
+    pub system_info: SystemInfo,
+}
+
+#[cfg_attr(feature = "dbg", derive(Debug))]
+pub struct SystemInfo {
+    pub major: String,
+    pub minor: String,
+    pub build: String,
+    pub ubr: String,             // 补丁小版本号，例如 3880
+    pub display_version: String, // 例如 "23H2"
 }
 
 #[cfg_attr(feature = "dbg", derive(Debug))]

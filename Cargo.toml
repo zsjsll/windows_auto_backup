@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 encoding_rs = "0.8.35"
 hostname = "0.4.2"
+os_info = "3.15.0"
 
 serde = { version = "1.0.228", features = ["derive", "rc"] }
 time = { version = "0.3.49", features = ["formatting", "macros", "local-offset"] }
@@ -14,6 +15,7 @@ tracing = "0.1.44"
 tracing-appender = "0.2.5"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt", "time", "local-time"] }
 windows-version = "0.1.7"
+winreg = "0.56.0"
 
 [features]
 default = ["dbg"]

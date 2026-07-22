@@ -5,7 +5,10 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use windows_version::OsVersion;
+use winreg::RegKey;
+use winreg::enums::*;
+
+use windows_version::{OsVersion, revision};
 
 use super::{logs, smb, snapshot};
 
@@ -85,6 +88,43 @@ impl AppConfig {
             log_level: Arc::clone(&self.log_level),
         }
     }
+    // 获取 系统版本号
+    fn get_system_info(&self) -> snapshot::SystemInfo {
+        let hkcu = RegKey::predef(HKEY_LOCAL_MACHINE);
+        let subkey = hkcu.open_subkey(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
+
+        if let Ok(key) = subkey {
+            let major = key
+                .get_value::<u32, _>("CurrentMajorVersionNumber")
+                .ok()
+                .map_or("unknown".to_string(), |val| val.to_string());
+            let minor = key
+                .get_value::<u32, _>("CurrentMinorVersionNumber")
+                .ok()
+                .map_or("unknown".to_string(), |val| val.to_string());
+            let build = key.get_value("CurrentBuildNumber").unwrap_or_default();
+            let ubr = key
+                .get_value::<u32, _>("UBR")
+                .ok()
+                .map_or("unknown".to_string(), |val| val.to_string());
+            let display_version = key.get_value("DisplayVersion").unwrap_or_default();
+            return snapshot::SystemInfo {
+                major,
+                minor,
+                build,
+                ubr,
+                display_version,
+            };
+        }
+
+        snapshot::SystemInfo {
+            major: "".to_string(),
+            minor: "".to_string(),
+            build: "".to_string(),
+            ubr: "".to_string(),
+            display_version: "".to_string(),
+        }
+    }
 
     pub fn generate_snapshot_config(&self) -> snapshot::Config {
         let exe_path = PathBuf::from(r"./").join(&self.snapshot.exe_path);
@@ -92,9 +132,14 @@ impl AppConfig {
         let computer_name = hostname::get().unwrap();
         let path = self.get_defaut_path().join("snapshot").join(computer_name);
 
+        let system_info = self.get_system_info();
         // 获取 系统版本号
         let mut sys_name = "unknown";
         let version = OsVersion::current();
+        let ubr = revision().to_string();
+
+        dbg!(ubr);
+        // self.get_system_info();
         // 判断是否是 Windows 11 (Build 22000 及以上)
         if version >= OsVersion::new(10, 0, 0, 22000) {
             sys_name = "win11";
@@ -142,6 +187,7 @@ impl AppConfig {
             exe_path,
             args,
             archived_number: self.snapshot.archived_number,
+            system_info,
         }
     }
 }
