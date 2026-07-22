@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -12,20 +13,26 @@ pub struct Config {
     pub archived_number: usize,
 }
 
+#[cfg_attr(feature = "dbg", derive(Debug))]
+pub struct Snapshot(Config);
+
 impl From<Config> for Snapshot {
     fn from(config: Config) -> Self {
-        Self { config: config }
+        Self(config)
     }
 }
 
-#[cfg_attr(feature = "dbg", derive(Debug))]
-pub struct Snapshot {
-    config: Config,
+impl Deref for Snapshot {
+    type Target = Config;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl Snapshot {
     pub fn show_config(&self) {
-        dbg!(&self.config);
+        dbg!(self);
     }
 
     #[instrument(err(Display), level = "debug")]
@@ -59,7 +66,7 @@ impl Snapshot {
                         None
                     }
                 })
-                .nth(self.config.archived_number)
+                .nth(self.archived_number)
                 .is_some()
         } else {
             false
@@ -67,7 +74,7 @@ impl Snapshot {
 
         dbg!(&has_enough_archived_files);
 
-        let has_enough_backup_files = backup_files.len() > self.config.archived_number;
+        let has_enough_backup_files = backup_files.len() > self.archived_number;
 
         if has_enough_archived_files && has_enough_backup_files {
             warn!("已达到归档数量上限, 进行清理");
@@ -95,8 +102,8 @@ impl Snapshot {
     pub fn backup(&self) -> Result<(), Box<dyn std::error::Error>> {
         let output = Command::new("MinSudo.exe")
             .arg("-NoL")
-            .arg(&self.config.exe_path)
-            .args(&self.config.args)
+            .arg(&self.exe_path)
+            .args(&self.args)
             // .arg("/?")
             .output()?;
 

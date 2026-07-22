@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::Arc;
@@ -9,21 +10,26 @@ pub struct Config {
     pub passwd: Arc<String>,
 }
 
+#[cfg_attr(feature = "dbg", derive(Debug))]
+pub struct Smb(pub Config);
+
 impl From<Config> for Smb {
     fn from(config: Config) -> Self {
-        Self { config: config }
+        Self(config)
     }
 }
 
-#[cfg_attr(feature = "dbg", derive(Debug))]
-pub struct Smb {
-    config: Config,
+impl Deref for Smb {
+    type Target = Config;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl Smb {
     #[instrument(err(Display), level = "debug")]
     pub fn connect(&self) -> Result<(), Box<dyn std::error::Error>> {
-        if !self.config.url.to_string_lossy().starts_with(r"\\") {
+        if !self.url.to_string_lossy().starts_with(r"\\") {
             warn!("进行本地备份");
             warn!("如果需要 SMB 备份, 请配置 config.toml 中的 snapshot.dist_dir = \"\"");
             return Ok(());
@@ -33,10 +39,10 @@ impl Smb {
 
         let output = Command::new(r"net")
             .arg("use")
-            .arg(&self.config.url)
+            .arg(&self.url)
             .args(&[
-                &format!(r"/user:{}", self.config.user.as_str()),
-                self.config.passwd.as_str(),
+                &format!(r"/user:{}", self.user.as_str()),
+                self.passwd.as_str(),
                 r"/persistent:no",
             ])
             .output()?;
@@ -54,12 +60,12 @@ impl Smb {
     /// 运维好习惯：断开与该远程服务器的所有隐式连接
     #[instrument(err(Display), level = "debug")]
     pub fn disconnect(&self) -> Result<(), Box<dyn std::error::Error>> {
-        if !self.config.url.to_string_lossy().starts_with(r"\\") {
+        if !self.url.to_string_lossy().starts_with(r"\\") {
             return Ok(());
         }
         let output = Command::new("net")
             .arg("use")
-            .arg(&self.config.url)
+            .arg(&self.url)
             .args(&[r"/delete", r"/y"])
             .output()?;
 
