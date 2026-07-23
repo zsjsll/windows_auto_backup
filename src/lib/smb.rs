@@ -66,7 +66,7 @@ impl Smb {
         let output = Command::new("net")
             .arg("use")
             .arg(&self.url)
-            .args(&[r"/delete", r"/y"])
+            .args(&[r"/del", r"/y"])
             .output()?;
 
         if output.status.success() {

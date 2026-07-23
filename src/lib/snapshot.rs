@@ -13,7 +13,7 @@ use time::UtcOffset;
 #[cfg_attr(feature = "dbg", derive(Debug))]
 pub struct Config {
     pub exe_path: PathBuf,
-    pub def_path: PathBuf,
+    pub backup_dir: PathBuf,
     pub args: Vec<String>,
     pub archived_number: usize,
     pub system_info: SystemInfo,
@@ -23,11 +23,12 @@ pub struct Config {
 
 #[cfg_attr(feature = "dbg", derive(Debug))]
 pub struct SystemInfo {
-    pub major: u32,
-    pub minor: u32,
-    pub pack: u32,
-    pub build: u32,
-    pub ubr: u32,
+    pub computer_name: String,
+    pub major: String,
+    pub minor: String,
+    pub pack: String,
+    pub build: String,
+    pub ubr: String,
 }
 #[cfg_attr(feature = "dbg", derive(Debug))]
 pub struct TimeInfo {
@@ -60,28 +61,49 @@ impl Deref for Snapshot {
 }
 
 impl Snapshot {
-    pub fn show_config(&self) {
-        dbg!(self);
+    fn has_hash_file(&self, backup_files: &[PathBuf]) -> bool {
+        let result = backup_files.iter().any(|path| {
+            path.extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case(&self.file_ext.hash))
+        });
+        result
+    }
+
+    fn get_backup_files(&self) -> io::Result<Vec<PathBuf>> {
+        let backup_files: Vec<PathBuf> = fs::read_dir(&self.backup_dir)?
+            .filter_map(|p| {
+                let path = p.ok()?.path();
+                let is_target = path.extension().is_some_and(|ext| {
+                    ext.eq_ignore_ascii_case(&self.file_ext.backup)
+                        || ext.eq_ignore_ascii_case(&self.file_ext.hash)
+                });
+                is_target.then_some(path)
+            })
+            .collect();
+        Ok(backup_files)
+    }
+
+    fn has_enough_archived_files(&self, archived_dir: &Path) -> bool {
+        archived_dir
+            .is_dir()
+            .then(|| {
+                fs::read_dir(archived_dir)
+                    .ok()
+                    .is_some_and(|mut p| p.nth(self.archived_number).is_some())
+            })
+            .unwrap_or(false)
     }
 
     #[instrument(err(Display), level = "debug")]
     pub fn init_backup_dir(&self) -> io::Result<()> {
-        let work_dir = Path::new(r"\\10.10.0.201\backup\snapshot\work");
-        let archived_dir = work_dir.join("archived");
+        // 1 创建需要的目录
+        let archived_dir = &self.backup_dir.join("archived");
+        fs::create_dir_all(archived_dir)?;
+
+        // 2 读取目录下的文件
+        let backup_files = self.get_backup_files()?;
+
         // fs::create_dir_all(&doc_dir)?;
-
-        let backup_files: Vec<_> = fs::read_dir(work_dir)?
-            .filter_map(|e| {
-                let path = e.ok()?.path();
-                let ext = path.extension()?.to_str()?;
-
-                if ext.eq_ignore_ascii_case("sna") || ext.eq_ignore_ascii_case("hsh") {
-                    Some(path)
-                } else {
-                    None
-                }
-            })
-            .collect();
 
         let has_enough_archived_files = if archived_dir.is_dir() {
             fs::read_dir(&archived_dir)?
@@ -100,8 +122,6 @@ impl Snapshot {
         } else {
             false
         };
-
-        dbg!(&has_enough_archived_files);
 
         let has_enough_backup_files = backup_files.len() > self.archived_number;
 
@@ -132,8 +152,8 @@ impl Snapshot {
         let output = Command::new("MinSudo.exe")
             .arg("-NoL")
             .arg(&self.exe_path)
-            .args(&self.args)
-            // .arg("/?")
+            // .args(&self.args)
+            .arg("/?")
             .output()?;
 
         if output.status.success() {

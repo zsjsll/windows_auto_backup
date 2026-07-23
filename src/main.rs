@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // snapshot.show_config();
     snapshot.init_backup_dir()?;
 
-    // snapshot.backup()?;
+    snapshot.backup()?;
 
     smb.disconnect()?;
 

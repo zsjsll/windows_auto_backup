@@ -87,19 +87,16 @@ impl AppConfig {
     }
     // 获取 系统版本号
     fn get_system_info(&self) -> snapshot::SystemInfo {
-        let OsVersion {
-            major,
-            minor,
-            pack,
-            build,
-        } = OsVersion::current();
+        let tags = OsVersion::current();
+        let computer_name = hostname::get().unwrap().to_string_lossy().to_string();
 
         snapshot::SystemInfo {
-            major,
-            minor,
-            pack,
-            build,
-            ubr: revision(),
+            computer_name,
+            major: tags.major.to_string(),
+            minor: tags.minor.to_string(),
+            pack: tags.pack.to_string(),
+            build: tags.build.to_string(),
+            ubr: revision().to_string(),
         }
     }
 
@@ -118,7 +115,7 @@ impl AppConfig {
         let exe_path = PathBuf::from(r"./").join(&self.snapshot.exe_path);
         // 获取 计算机名字
         let computer_name = hostname::get().unwrap();
-        let def_path = self.get_def_path().join("snapshot").join(computer_name);
+        let backup_path = self.get_def_path().join("snapshot").join(computer_name);
 
         let system_info = self.get_system_info();
         // 获取 系统版本号
@@ -141,8 +138,8 @@ impl AppConfig {
 
         let dist_name = format!("{sys_name}_{custom_time}.sna");
         let hash_name = format!("{sys_name}_{custom_time}.hsh");
-        let dist_path = def_path.join(dist_name);
-        let hash_path = def_path.join(hash_name);
+        let dist_path = backup_path.join(dist_name);
+        let hash_path = backup_path.join(hash_name);
 
         let mut args: Vec<String> = Vec::with_capacity(10);
 
@@ -173,7 +170,7 @@ impl AppConfig {
 
         snapshot::Config {
             exe_path,
-            def_path,
+            backup_dir: backup_path,
             args,
             archived_number: self.snapshot.archived_number,
             system_info,
