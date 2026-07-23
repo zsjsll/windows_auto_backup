@@ -83,15 +83,11 @@ impl Snapshot {
         Ok(backup_files)
     }
 
-    fn has_enough_archived_files(&self, archived_dir: &Path) -> bool {
-        archived_dir
-            .is_dir()
-            .then(|| {
-                fs::read_dir(archived_dir)
-                    .ok()
-                    .is_some_and(|mut p| p.nth(self.archived_number).is_some())
-            })
-            .unwrap_or(false)
+    fn has_enough_files(&self, archived_dir: &Path) -> bool {
+        archived_dir.is_dir()
+            && fs::read_dir(archived_dir)
+                .ok()
+                .is_some_and(|mut p| p.nth(self.archived_number).is_some())
     }
 
     #[instrument(err(Display), level = "debug")]
@@ -103,28 +99,9 @@ impl Snapshot {
         // 2 读取目录下的文件
         let backup_files = self.get_backup_files()?;
 
-        // fs::create_dir_all(&doc_dir)?;
-
-        let has_enough_archived_files = if archived_dir.is_dir() {
-            fs::read_dir(&archived_dir)?
-                .filter_map(|e| {
-                    let entry = e.ok()?.path();
-                    let ext = entry.extension()?.to_str()?;
-
-                    if ext.eq_ignore_ascii_case("sna") || ext.eq_ignore_ascii_case("hsh") {
-                        Some(()) // 匹配成功，只保留一个信号单位
-                    } else {
-                        None
-                    }
-                })
-                .nth(self.archived_number)
-                .is_some()
-        } else {
-            false
-        };
-
+        // 3 检查是否对文件进行归档, 并对归档文件进行清理
+        let has_enough_archived_files = self.has_enough_files(&archived_dir);
         let has_enough_backup_files = backup_files.len() > self.archived_number;
-
         if has_enough_archived_files && has_enough_backup_files {
             warn!("已达到归档数量上限, 进行清理");
             fs::remove_dir_all(&archived_dir)?;
