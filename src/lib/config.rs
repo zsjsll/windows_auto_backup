@@ -29,6 +29,7 @@ struct SmbConfig {
 #[cfg_attr(feature = "dbg", derive(Debug))]
 #[derive(Deserialize)]
 struct SnapshotConfig {
+    backup_interval: u8,
     exe_path: String,
     archived_number: usize,
     source_dir: String,
@@ -100,17 +101,6 @@ impl AppConfig {
         }
     }
 
-    fn get_time_info(&self) -> snapshot::TimeInfo {
-        // 优先拿本地时间，拿不到就用 UTC 时间兜底
-        let now =
-            time::OffsetDateTime::now_local().unwrap_or_else(|_| time::OffsetDateTime::now_utc());
-        snapshot::TimeInfo {
-            date: now.date(),
-            time: now.time(),
-            offset: now.offset(),
-        }
-    }
-
     pub fn generate_snapshot_config(&self) -> snapshot::Config {
         let exe_path = PathBuf::from(r"./").join(&self.snapshot.exe_path);
         // 获取 计算机名字
@@ -121,7 +111,6 @@ impl AppConfig {
         // 获取 系统版本号
         let sys_name = "unknown";
 
-        let time_info = self.get_time_info();
         let timer_format = time::macros::format_description!("[year]-[month]-[day]_[hour][minute]");
         let custom_time = time::OffsetDateTime::now_local()
             .unwrap()
@@ -174,7 +163,7 @@ impl AppConfig {
             args,
             archived_number: self.snapshot.archived_number,
             system_info,
-            time_info,
+            backup_interval: self.snapshot.backup_interval,
             file_ext,
         }
     }

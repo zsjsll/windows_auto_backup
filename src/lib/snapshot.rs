@@ -5,10 +5,10 @@ use std::process::Command;
 
 use std::fs;
 use std::io;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 
-use time::Date;
-use time::Time;
-use time::UtcOffset;
+use time::OffsetDateTime;
 
 #[cfg_attr(feature = "dbg", derive(Debug))]
 pub struct Config {
@@ -17,7 +17,7 @@ pub struct Config {
     pub args: Vec<String>,
     pub archived_number: usize,
     pub system_info: SystemInfo,
-    pub time_info: TimeInfo,
+    pub backup_interval: u8,
     pub file_ext: FileExt,
 }
 
@@ -29,12 +29,6 @@ pub struct SystemInfo {
     pub pack: String,
     pub build: String,
     pub ubr: String,
-}
-#[cfg_attr(feature = "dbg", derive(Debug))]
-pub struct TimeInfo {
-    pub date: Date,
-    pub time: Time,
-    pub offset: UtcOffset,
 }
 
 #[cfg_attr(feature = "dbg", derive(Debug))]
@@ -69,15 +63,21 @@ impl Snapshot {
         result
     }
 
-    fn get_backup_files(&self) -> io::Result<Vec<PathBuf>> {
-        let backup_files: Vec<PathBuf> = fs::read_dir(&self.backup_dir)?
+    fn get_backup_files(&self) -> io::Result<Vec<(PathBuf, SystemTime)>> {
+        let backup_files = fs::read_dir(&self.backup_dir)?
             .filter_map(|p| {
-                let path = p.ok()?.path();
+                let entry = p.ok()?;
+                let path = entry.path();
+
                 let is_target = path.extension().is_some_and(|ext| {
                     ext.eq_ignore_ascii_case(&self.file_ext.backup)
                         || ext.eq_ignore_ascii_case(&self.file_ext.hash)
                 });
-                is_target.then_some(path)
+
+                let metadata = entry.metadata().ok()?;
+                let timestamp = metadata.modified().ok()?;
+
+                is_target.then_some((path, timestamp))
             })
             .collect();
         Ok(backup_files)
@@ -99,29 +99,51 @@ impl Snapshot {
         // 2 读取目录下的文件
         let backup_files = self.get_backup_files()?;
 
+        self.check_backup(&backup_files);
+
         // 3 检查是否对文件进行归档, 并对归档文件进行清理
         let has_enough_archived_files = self.has_enough_files(&archived_dir);
         let has_enough_backup_files = backup_files.len() > self.archived_number;
         if has_enough_archived_files && has_enough_backup_files {
-            warn!("已达到归档数量上限, 进行清理");
+            warn!("⚠️ 已达到归档数量上限, 进行清理");
             fs::remove_dir_all(&archived_dir)?;
         }
 
         if has_enough_backup_files {
             fs::create_dir_all(&archived_dir)?;
 
-            for backup_file in backup_files {
-                // 获取文件名（例如 "example.txt"）
-                if let Some(file_name) = backup_file.file_name() {
-                    // 拼接出新路径：\\10.10.0.201\backup\snapshot\work\doc\example.txt
-                    let destination = archived_dir.join(file_name);
-                    // 执行移动操作
-                    fs::rename(&backup_file, &destination)?;
-                }
-            }
-            info!("已成功将文件移动到 doc 目录！");
+            backup_files.iter().try_for_each(|(backup_file, _)| {
+                let backup_file_name = backup_file.file_name().unwrap_or_default();
+
+                let destination = archived_dir.join(backup_file_name);
+                fs::rename(backup_file, &destination)
+            })?;
+            warn!("⚠️ 已成功将文件移动到 doc 目录!");
         }
+
         Ok(())
+    }
+
+    pub fn create_new_backup_file_name(
+        &self,
+        backup_files: &[(PathBuf, SystemTime)],
+    ) -> Option<String> {
+        // let timestamp = backup_files
+        //     .iter()
+        //     .max_by_key(|(_, timestamp)| *timestamp)
+        //     .and_then(|p| Some(p.1))
+        //     .unwrap_or(UNIX_EPOCH);
+
+        let Some(now_time) = time::OffsetDateTime::now_local().ok() else {
+            return Some("defaut".to_string());
+        };
+
+        let Some((_, timestamp)) = backup_files.iter().max_by_key(|(_, timestamp)| *timestamp)
+        else {
+            return Some("12312".to_string());
+        };
+
+        todo!()
     }
 
     #[instrument(err(Display), level = "debug")]

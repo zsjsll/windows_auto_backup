@@ -27,7 +27,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let snapshot: snapshot::Snapshot = cfg.generate_snapshot_config().into();
 
-    // snapshot.show_config();
+
+
+
     snapshot.init_backup_dir()?;
 
     snapshot.backup()?;

@@ -17,9 +17,9 @@ source_dir = "C:"
 # 如果需要 SMB 备份, 需要保持该选项为空
 dist_dir = ""
 
+# 备份的间隔时间, 避免重复备份 (h)
+backup_interval = 12
 
-# 将目标硬盘的最大I/O速率限制为10MB/s（1-100）
-limit_IO_rate=100
 # 保存所有扇区，忽略空闲簇信息（维护）
 save_all_sectors = false
 # 如果从计划程序启动，则禁止 <按任何键>
