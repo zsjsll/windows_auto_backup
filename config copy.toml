@@ -13,13 +13,48 @@ password = ""
 [snapshot]
 exe_path = "snapshot64.exe"
 archived_number = 7
+# 要备份的路径
 source_dir = "C:"
+# 允许从备份中排除目录、文件或文件类型。
+
+# 1. 系统缓存与机制文件（体积巨大，还原时无需备份）
+# C:\pagefile.sys（虚拟内存文件）
+# C:\hiberfil.sys（休眠数据文件）
+# C:\swapfile.sys（应用交换文件）
+# 2. 临时文件与垃圾目录
+# C:\Windows\Temp\* 和 C:\Users\<用户名>\AppData\Local\Temp\*（系统和用户的临时文件）
+# C:\$Recycle.Bin（回收站）
+# C:\System Volume Information（系统还原点与索引数据，部分备份软件会自动处理）
+# 3. 系统更新缓存与升级残留
+# C:\Windows\SoftwareDistribution\Download\*（Windows Update 下载的安装包）
+# C:\$WINDOWS.~BT 或 C:\$WINDOWS.~WS（大版本更新留下的临时备份文件夹）
+# C:\Windows.old（旧系统备份，如果不需要回退可排除/删除）
+# 4. 应用缓存（可选排除）
+# C:\Users\<用户名>\AppData\Local\CrashDumps（软件崩溃转储日志）
+# 各种浏览器的 Cache 路径（如 AppData\Local\Google\Chrome\User Data\Default\Cache）
+# 开发工具的依赖/编译缓存（如 .gradle/caches、npm-cache 等）
+
+exclude = [
+  'pagefile.sys',
+  'hiberfil.sys',
+  'swapfile.sys',
+  'Windows\Temp\*',
+  '%temp%\*',
+  '\$Recycle.Bin',
+  '\System Volume Information',
+  '\Windows\SoftwareDistribution\Download\*',
+  '$WINDOWS.~BT',
+  '$WINDOWS.~WS',
+  'Windows.old',
+]
+# exclude = []
 # 如果需要 SMB 备份, 需要保持该选项为空
 dist_dir = ""
-
 # 备份的间隔时间, 避免重复备份 (h)
 backup_interval = 12
 
+# 将目标硬盘的最大I/O速率限制为10MB/s（1-100）
+limit_IO_rate=100
 # 保存所有扇区，忽略空闲簇信息（维护）
 save_all_sectors = false
 # 如果从计划程序启动，则禁止 <按任何键>

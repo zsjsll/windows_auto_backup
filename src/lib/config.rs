@@ -34,6 +34,7 @@ struct SnapshotConfig {
     archived_number: usize,
     source_dir: String,
     dist_dir: String,
+    limit_io_rate: u8,
     save_all_sectors: bool,
     disable_key: bool,
     test: bool,
@@ -130,13 +131,13 @@ impl AppConfig {
         let dist_path = backup_path.join(dist_name);
         let hash_path = backup_path.join(hash_name);
 
-        let mut args: Vec<String> = Vec::with_capacity(10);
+        let mut args: Vec<String> = Vec::with_capacity(15);
 
         args.extend([
             self.snapshot.source_dir.clone(),
-            dist_path.to_string_lossy().to_string(),
-            "-o".to_string() + &hash_path.to_string_lossy(),
-            "-L0".to_string(),
+            dist_path.to_string_lossy().into(),
+            format!("-o{}", hash_path.to_string_lossy()),
+            "-L0".into(),
             "--CreateDir".into(),
         ]);
 
@@ -144,17 +145,20 @@ impl AppConfig {
             ($($field:expr => $flag:expr),* $(,)?) => {
                 $(
                     if $field {
-                        args.push($flag.to_string());
+                        args.push($flag.into());
                     }
                 )*
             };
         }
+
+        let limit_io_rate = format!("--LimitIORate:{}", self.snapshot.limit_io_rate);
         push_flag!(
-            self.snapshot.save_all_sectors => "-A",
-            self.snapshot.disable_key      => "-W",
-            self.snapshot.test             => "-T",
-            self.snapshot.graph            => "-G",
-            self.snapshot.clean_recycle    => "-R",
+            self.snapshot.limit_io_rate != 0    => limit_io_rate,
+            self.snapshot.save_all_sectors      => "-A",
+            self.snapshot.disable_key           => "-W",
+            self.snapshot.test                  => "-T",
+            self.snapshot.graph                 => "-G",
+            self.snapshot.clean_recycle         => "-R",
         );
 
         snapshot::Config {
