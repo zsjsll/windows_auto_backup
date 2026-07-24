@@ -33,7 +33,7 @@ struct SnapshotConfig {
     archived_number: usize,
     source_dir: String,
     dist_dir: String,
-    limit_IO_rate: u8,
+    limit_io_rate: u8,
     save_all_sectors: bool,
     disable_key: bool,
     test: bool,
@@ -146,32 +146,30 @@ impl AppConfig {
 
         args.extend([
             self.snapshot.source_dir.clone(),
-            dist_path.to_string_lossy().to_string(),
+            dist_path.to_string_lossy().into(),
             format!("-o{}", hash_path.to_string_lossy()),
-            "-L0".to_string(),
-            "--CreateDir".to_string(),
+            "-L0".into(),
+            "--CreateDir".into(),
         ]);
-
-        let limit_io_rate = (self.snapshot.limit_IO_rate != 0)
-            .then(|| format!("--LimitIORate:{}", self.snapshot.limit_IO_rate));
-        dbg!(&limit_io_rate);
-        args.extend(limit_io_rate);
 
         macro_rules! push_flag {
             ($($field:expr => $flag:expr),* $(,)?) => {
                 $(
                     if $field {
-                        args.push($flag.to_string());
+                        args.push($flag.into());
                     }
                 )*
             };
         }
+
+        let limit_io_rate = format!("--LimitIORate:{}", self.snapshot.limit_io_rate);
         push_flag!(
-            self.snapshot.save_all_sectors => "-A",
-            self.snapshot.disable_key      => "-W",
-            self.snapshot.test             => "-T",
-            self.snapshot.graph            => "-G",
-            self.snapshot.clean_recycle    => "-R",
+            self.snapshot.limit_io_rate != 0    => limit_io_rate,
+            self.snapshot.save_all_sectors      => "-A",
+            self.snapshot.disable_key           => "-W",
+            self.snapshot.test                  => "-T",
+            self.snapshot.graph                 => "-G",
+            self.snapshot.clean_recycle         => "-R",
         );
 
         snapshot::Config {
