@@ -33,6 +33,7 @@ struct SnapshotConfig {
     archived_number: usize,
     source_dir: String,
     dist_dir: String,
+    limit_IO_rate: u8,
     save_all_sectors: bool,
     disable_key: bool,
     test: bool,
@@ -141,15 +142,20 @@ impl AppConfig {
         let dist_path = backup_path.join(dist_name);
         let hash_path = backup_path.join(hash_name);
 
-        let mut args: Vec<String> = Vec::with_capacity(10);
+        let mut args: Vec<String> = Vec::with_capacity(15);
 
         args.extend([
             self.snapshot.source_dir.clone(),
             dist_path.to_string_lossy().to_string(),
-            "-o".to_string() + &hash_path.to_string_lossy(),
+            format!("-o{}", hash_path.to_string_lossy()),
             "-L0".to_string(),
-            "--CreateDir".into(),
+            "--CreateDir".to_string(),
         ]);
+
+        let limit_io_rate = (self.snapshot.limit_IO_rate != 0)
+            .then(|| format!("--LimitIORate:{}", self.snapshot.limit_IO_rate));
+        dbg!(&limit_io_rate);
+        args.extend(limit_io_rate);
 
         macro_rules! push_flag {
             ($($field:expr => $flag:expr),* $(,)?) => {

@@ -18,8 +18,8 @@ source_dir = "C:"
 dist_dir = ""
 
 
-# 将目标硬盘的最大I/O速率限制为10MB/s（1-100）
-limit_IO_rate=100
+# 将目标硬盘的最大I/O速率限制为10MB/s（0-100） 0为关闭该功能
+limit_IO_rate = 0
 # 保存所有扇区，忽略空闲簇信息（维护）
 save_all_sectors = false
 # 如果从计划程序启动，则禁止 <按任何键>
