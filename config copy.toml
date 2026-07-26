@@ -12,9 +12,14 @@ password = ""
 # 备份策略配置区块
 [snapshot]
 exe_path = "snapshot64.exe"
+# 要备份的卷
+backup_volumes = "C:" # 这将备份 C:
+# volumes = "C:+D:+E:" # 同时备份 C：、D：和 E：
+# volumes = "HD1:*" # 备份物理硬盘中的所有分区
+
+
 archived_number = 7
-# 要备份的路径
-source_dir = "C:"
+
 # 允许从备份中排除目录、文件或文件类型。
 
 # 1. 系统缓存与机制文件（体积巨大，还原时无需备份）
@@ -54,7 +59,7 @@ dist_dir = ""
 backup_interval = 12
 
 # 将目标硬盘的最大I/O速率限制为10MB/s（1-100）
-limit_IO_rate=100
+limit_IO_rate = 100
 # 保存所有扇区，忽略空闲簇信息（维护）
 save_all_sectors = false
 # 如果从计划程序启动，则禁止 <按任何键>

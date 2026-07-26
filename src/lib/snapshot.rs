@@ -99,7 +99,7 @@ impl Snapshot {
         // 2 读取目录下的文件
         let backup_files = self.get_backup_files()?;
 
-        self.check_backup(&backup_files);
+        self.create_backup_file_name(&backup_files);
 
         // 3 检查是否对文件进行归档, 并对归档文件进行清理
         let has_enough_archived_files = self.has_enough_files(&archived_dir);
@@ -124,7 +124,7 @@ impl Snapshot {
         Ok(())
     }
 
-    pub fn create_new_backup_file_name(
+    pub fn create_backup_file_name(
         &self,
         backup_files: &[(PathBuf, SystemTime)],
     ) -> Option<String> {

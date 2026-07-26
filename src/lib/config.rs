@@ -29,11 +29,11 @@ struct SmbConfig {
 #[cfg_attr(feature = "dbg", derive(Debug))]
 #[derive(Deserialize)]
 struct SnapshotConfig {
-    backup_interval: u8,
     exe_path: String,
-    archived_number: usize,
-    source_dir: String,
+    backup_volumes: String,
     dist_dir: String,
+    backup_interval: u8,
+    archived_number: usize,
     limit_io_rate: u8,
     save_all_sectors: bool,
     disable_key: bool,
@@ -106,7 +106,7 @@ impl AppConfig {
         let exe_path = PathBuf::from(r"./").join(&self.snapshot.exe_path);
         // 获取 计算机名字
         let computer_name = hostname::get().unwrap();
-        let backup_path = self.get_def_path().join("snapshot").join(computer_name);
+        let backup_dir = self.get_def_path().join("snapshot").join(computer_name);
 
         let system_info = self.get_system_info();
         // 获取 系统版本号
@@ -128,13 +128,13 @@ impl AppConfig {
 
         let dist_name = format!("{sys_name}_{custom_time}.sna");
         let hash_name = format!("{sys_name}_{custom_time}.hsh");
-        let dist_path = backup_path.join(dist_name);
-        let hash_path = backup_path.join(hash_name);
+        let dist_path = backup_dir.join(dist_name);
+        let hash_path = backup_dir.join(hash_name);
 
         let mut args: Vec<String> = Vec::with_capacity(15);
 
         args.extend([
-            self.snapshot.source_dir.clone(),
+            self.snapshot.backup_volumes.clone(),
             dist_path.to_string_lossy().into(),
             format!("-o{}", hash_path.to_string_lossy()),
             "-L0".into(),
@@ -163,7 +163,7 @@ impl AppConfig {
 
         snapshot::Config {
             exe_path,
-            backup_dir: backup_path,
+            backup_dir,
             args,
             archived_number: self.snapshot.archived_number,
             system_info,
