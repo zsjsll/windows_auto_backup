@@ -32,7 +32,7 @@ struct SnapshotConfig {
     exe_path: String,
     backup_volumes: String,
     dist_dir: String,
-    backup_interval: u8,
+    backup_interval: i64,
     archived_number: usize,
     limit_io_rate: u8,
     save_all_sectors: bool,
@@ -88,55 +88,33 @@ impl AppConfig {
         }
     }
     // 获取 系统版本号
-    fn get_system_info(&self) -> snapshot::SystemInfo {
-        let tags = OsVersion::current();
-        let computer_name = hostname::get().unwrap().to_string_lossy().to_string();
-
-        snapshot::SystemInfo {
-            computer_name,
-            major: tags.major.to_string(),
-            minor: tags.minor.to_string(),
-            pack: tags.pack.to_string(),
-            build: tags.build.to_string(),
-            ubr: revision().to_string(),
-        }
+    fn get_system_info(&self) -> String {
+        let build = OsVersion::current().build.to_string();
+        let ubr = revision().to_string();
+        format!("{build}({ubr})")
     }
 
     pub fn generate_snapshot_config(&self) -> snapshot::Config {
         let exe_path = PathBuf::from(r"./").join(&self.snapshot.exe_path);
         // 获取 计算机名字
-        let computer_name = hostname::get().unwrap();
+        let computer_name = hostname::get().unwrap_or("unknown".into());
         let backup_dir = self.get_def_path().join("snapshot").join(computer_name);
 
         let system_info = self.get_system_info();
-        // 获取 系统版本号
-        let sys_name = "unknown";
-
-        let timer_format = time::macros::format_description!("[year]-[month]-[day]_[hour][minute]");
-        let custom_time = time::OffsetDateTime::now_local()
-            .unwrap()
-            .format(timer_format)
-            .unwrap();
 
         let backup_file_ext = "sna".to_string();
         let hash_file_ext = "hsh".to_string();
-
         let file_ext = snapshot::FileExt {
             backup: backup_file_ext,
             hash: hash_file_ext,
         };
 
-        let dist_name = format!("{sys_name}_{custom_time}.sna");
-        let hash_name = format!("{sys_name}_{custom_time}.hsh");
-        let dist_path = backup_dir.join(dist_name);
-        let hash_path = backup_dir.join(hash_name);
-
         let mut args: Vec<String> = Vec::with_capacity(15);
 
         args.extend([
             self.snapshot.backup_volumes.clone(),
-            dist_path.to_string_lossy().into(),
-            format!("-o{}", hash_path.to_string_lossy()),
+            // dist_path.to_string_lossy().into(),
+            // format!("-o{}", hash_path.to_string_lossy()),
             "-L0".into(),
             "--CreateDir".into(),
         ]);

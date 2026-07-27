@@ -13,28 +13,23 @@ use lib::{config, logs, smb, snapshot};
 
 const CONFIG_PATH: &str = "config.toml";
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     let logs = logs::Logs::new();
 
-    let cfg = config::AppConfig::new(CONFIG_PATH)?;
+    let cfg = config::AppConfig::new(CONFIG_PATH).unwrap();
 
     logs.update_logger_level(&cfg.generate_logs_config());
     let smb: smb::Smb = cfg.generate_smb_config().into();
 
-    smb.connect()?;
+    smb.connect().unwrap();
 
     cfg.generate_snapshot_config();
 
     let snapshot: snapshot::Snapshot = cfg.generate_snapshot_config().into();
 
+    let _ = snapshot.init_backup_dir().ok();
 
+    // snapshot.backup()?;
 
-
-    snapshot.init_backup_dir()?;
-
-    snapshot.backup()?;
-
-    smb.disconnect()?;
-
-    Ok(())
+    smb.disconnect().ok();
 }

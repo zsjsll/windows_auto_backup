@@ -6,7 +6,6 @@ use std::process::Command;
 use std::fs;
 use std::io;
 use std::time::SystemTime;
-use std::time::UNIX_EPOCH;
 
 #[cfg_attr(feature = "dbg", derive(Debug))]
 pub struct Config {
@@ -14,22 +13,13 @@ pub struct Config {
     pub backup_dir: PathBuf,
     pub args: Vec<String>,
     pub archived_number: usize,
-    pub system_info: SystemInfo,
-    pub backup_interval: u8,
+    pub system_info: String,
+    pub backup_interval: i64,
     pub file_ext: FileExt,
 }
 
 #[cfg_attr(feature = "dbg", derive(Debug))]
-pub struct SystemInfo {
-    pub computer_name: String,
-    pub major: String,
-    pub minor: String,
-    pub pack: String,
-    pub build: String,
-    pub ubr: String,
-}
 
-#[cfg_attr(feature = "dbg", derive(Debug))]
 pub struct FileExt {
     pub backup: String,
     pub hash: String,
@@ -87,41 +77,7 @@ impl Snapshot {
                 .is_some_and(|mut p| p.nth(self.archived_number).is_some())
     }
 
-    #[instrument(err(Display), level = "debug")]
-    pub fn init_backup_dir(&self) -> io::Result<()> {
-        // 1 创建需要的目录
-        let archived_dir = &self.backup_dir.join("archived");
-        fs::create_dir_all(archived_dir)?;
-
-        // 2 读取目录下的文件
-        let backup_files = self.get_backup_files()?;
-
-        self.create_backup_file_name(&backup_files);
-
-        // 3 检查是否对文件进行归档, 并对归档文件进行清理
-        let has_enough_archived_files = self.has_enough_files(&archived_dir);
-        let has_enough_backup_files = backup_files.len() > self.archived_number;
-        if has_enough_archived_files && has_enough_backup_files {
-            warn!("⚠️ 已达到归档数量上限, 进行清理");
-            fs::remove_dir_all(&archived_dir)?;
-        }
-
-        if has_enough_backup_files {
-            fs::create_dir_all(&archived_dir)?;
-
-            backup_files.iter().try_for_each(|(backup_file, _)| {
-                let backup_file_name = backup_file.file_name().unwrap_or_default();
-
-                let destination = archived_dir.join(backup_file_name);
-                fs::rename(backup_file, &destination)
-            })?;
-            warn!("⚠️ 已成功将文件移动到 doc 目录!");
-        }
-
-        Ok(())
-    }
-    #[instrument(err(Display), level = "debug")]
-    pub fn create_backup_file_name(
+    fn create_backup_file_name(
         &self,
         backup_files: &[(PathBuf, SystemTime)],
     ) -> Result<String, Box<dyn std::error::Error>> {
@@ -136,18 +92,58 @@ impl Snapshot {
             })
             .max()
             .map(Into::into)
-            .unwrap_or(now);
+            .unwrap_or(time::OffsetDateTime::UNIX_EPOCH);
 
-        let diff_time = now - timestamp;
+        let diff_hours = (now - timestamp).abs().whole_hours();
 
-        if (diff_time.whole_hours() > self.backup_interval as i64) {
-            let timer_format =
-                time::macros::format_description!("[year]-[month]-[day]_[hour][minute]");
-            let time = now.format(timer_format)?;
-
+        if diff_hours <= self.backup_interval {
+            let e = format!("未满足间隔时间: {} 小时", self.backup_interval);
+            return Err(e.into());
         }
 
-        Ok("213".to_string())
+        let timer_format = time::macros::format_description!("[year]-[month]-[day]_[hour][minute]");
+        let time_string = now.format(timer_format)?;
+
+        let backup_file_name = format!(
+            "{}_{}.{}",
+            self.system_info, time_string, &self.file_ext.backup
+        );
+        Ok(backup_file_name)
+    }
+
+    #[instrument(err(Display), level = "debug")]
+    pub fn init_backup_dir(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // 创建需要的目录
+        let archived_dir = &self.backup_dir.join("archived");
+        fs::create_dir_all(archived_dir)?;
+
+        // 读取目录下的文件
+        let backup_files = self.get_backup_files()?;
+
+        // 生成备份文件的名字
+        let new_backup_file_name = self.create_backup_file_name(&backup_files)?;
+
+        // 检查是否对文件进行归档, 并对归档文件进行清理
+        let has_enough_archived_files = self.has_enough_files(archived_dir);
+        let has_enough_backup_files = backup_files.len() > self.archived_number;
+        if has_enough_archived_files && has_enough_backup_files {
+            warn!("已达到归档数量上限, 进行清理");
+            fs::remove_dir_all(archived_dir)?;
+        }
+
+        if has_enough_backup_files {
+            fs::create_dir_all(archived_dir)?;
+
+            backup_files.iter().try_for_each(|(backup_file, _)| {
+                let backup_file_name = backup_file.file_name().unwrap_or_default();
+
+                let destination = archived_dir.join(backup_file_name);
+                fs::rename(backup_file, &destination)
+            })?;
+            warn!("已成功将文件移动到 doc 目录!");
+        }
+
+        Ok(())
     }
 
     #[instrument(err(Display), level = "debug")]
