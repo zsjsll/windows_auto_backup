@@ -27,9 +27,7 @@ fn main() {
 
     let snapshot: snapshot::Snapshot = cfg.generate_snapshot_config().into();
 
-    let _ = snapshot.init_backup_dir().ok();
-
-    // snapshot.backup()?;
+    let _ = snapshot.backup().ok();
 
     smb.disconnect().ok();
 }

@@ -34,6 +34,7 @@ struct SnapshotConfig {
     dist_dir: String,
     backup_interval: i64,
     archived_number: usize,
+    exclude: Vec<String>,
     limit_io_rate: u8,
     save_all_sectors: bool,
     disable_key: bool,
@@ -109,15 +110,23 @@ impl AppConfig {
             hash: hash_file_ext,
         };
 
-        let mut args: Vec<String> = Vec::with_capacity(15);
+        let exclude_args: Vec<String> = self
+            .snapshot
+            .exclude
+            .iter()
+            .map(|x| format!("--exclude:{}", x))
+            .collect();
+
+        let mut args = Vec::with_capacity(50);
 
         args.extend([
             self.snapshot.backup_volumes.clone(),
-            // dist_path.to_string_lossy().into(),
-            // format!("-o{}", hash_path.to_string_lossy()),
             "-L0".into(),
             "--CreateDir".into(),
+            "--FullIfHashIsMissing".into(),
         ]);
+
+        args.extend(exclude_args);
 
         macro_rules! push_flag {
             ($($field:expr => $flag:expr),* $(,)?) => {

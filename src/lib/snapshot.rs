@@ -7,6 +7,8 @@ use std::fs;
 use std::io;
 use std::time::SystemTime;
 
+use encoding_rs::GBK;
+
 #[cfg_attr(feature = "dbg", derive(Debug))]
 pub struct Config {
     pub exe_path: PathBuf,
@@ -112,7 +114,7 @@ impl Snapshot {
     }
 
     #[instrument(err(Display), level = "debug")]
-    pub fn init_backup_dir(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn backup(&self) -> Result<(), Box<dyn std::error::Error>> {
         // 创建需要的目录
         let archived_dir = &self.backup_dir.join("archived");
         fs::create_dir_all(archived_dir)?;
@@ -122,7 +124,15 @@ impl Snapshot {
 
         // 生成备份文件的名字
         let new_backup_file_name = self.create_backup_file_name(&backup_files)?;
+        let dist_path = self.backup_dir.join(new_backup_file_name);
+        let hash_file_name = format!("hash.{}", &self.file_ext.hash);
+        let hash_path = self.backup_dir.join(hash_file_name);
 
+        let ex_args = vec![
+            dist_path.to_string_lossy().to_string(),
+            format!("-o{}", hash_path.to_string_lossy()),
+        ];
+        dbg!(&ex_args);
         // 检查是否对文件进行归档, 并对归档文件进行清理
         let has_enough_archived_files = self.has_enough_files(archived_dir);
         let has_enough_backup_files = backup_files.len() > self.archived_number;
@@ -143,25 +153,33 @@ impl Snapshot {
             warn!("已成功将文件移动到 doc 目录!");
         }
 
+        self.doing(&ex_args)?;
         Ok(())
     }
 
-    #[instrument(err(Display), level = "debug")]
-    pub fn backup(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let output = Command::new("MinSudo.exe")
-            .arg("-NoL")
-            .arg(&self.exe_path)
+    fn doing(&self, ex_args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
+        info!("开始备份");
+        // let output = Command::new("MinSudo.exe")
+        //     // .arg("-NoL")
+        //     .arg(&self.exe_path)
+        //     .args(&self.args)
+        //     .args(ex_args)
+        //     // .arg("/?")
+        //     .output()?;
+
+        let output = Command::new(&self.exe_path)
             // .args(&self.args)
-            .arg("/?")
+            // .args(ex_args)
+            // .arg(r"/?")
             .output()?;
 
         if output.status.success() {
             info!("✅ 已备份");
-            let (msg, _, _) = encoding_rs::GBK.decode(&output.stdout);
+            let (msg, _, _) = GBK.decode(&output.stdout);
             info!("{}", msg);
             Ok(())
         } else {
-            let (err_msg, _, _) = encoding_rs::GBK.decode(&output.stderr);
+            let (err_msg, _, _) = GBK.decode(&output.stderr);
             error!("❌ 备份出错");
             Err(err_msg.into())
         }
