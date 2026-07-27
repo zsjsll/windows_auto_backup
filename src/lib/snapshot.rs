@@ -8,8 +8,6 @@ use std::io;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
-use time::OffsetDateTime;
-
 #[cfg_attr(feature = "dbg", derive(Debug))]
 pub struct Config {
     pub exe_path: PathBuf,
@@ -68,14 +66,13 @@ impl Snapshot {
             .filter_map(|p| {
                 let entry = p.ok()?;
                 let path = entry.path();
+                let metadata = entry.metadata().ok()?;
+                let timestamp = metadata.modified().ok()?;
 
                 let is_target = path.extension().is_some_and(|ext| {
                     ext.eq_ignore_ascii_case(&self.file_ext.backup)
                         || ext.eq_ignore_ascii_case(&self.file_ext.hash)
                 });
-
-                let metadata = entry.metadata().ok()?;
-                let timestamp = metadata.modified().ok()?;
 
                 is_target.then_some((path, timestamp))
             })
@@ -123,27 +120,34 @@ impl Snapshot {
 
         Ok(())
     }
-
+    #[instrument(err(Display), level = "debug")]
     pub fn create_backup_file_name(
         &self,
         backup_files: &[(PathBuf, SystemTime)],
-    ) -> Option<String> {
-        // let timestamp = backup_files
-        //     .iter()
-        //     .max_by_key(|(_, timestamp)| *timestamp)
-        //     .and_then(|p| Some(p.1))
-        //     .unwrap_or(UNIX_EPOCH);
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let now = time::OffsetDateTime::now_local()?;
 
-        let Some(now_time) = time::OffsetDateTime::now_local().ok() else {
-            return Some("defaut".to_string());
-        };
+        let timestamp: time::OffsetDateTime = backup_files
+            .iter()
+            .filter_map(|(path, timestamp)| {
+                path.extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case(&self.file_ext.backup))
+                    .then_some(*timestamp)
+            })
+            .max()
+            .map(Into::into)
+            .unwrap_or(now);
 
-        let Some((_, timestamp)) = backup_files.iter().max_by_key(|(_, timestamp)| *timestamp)
-        else {
-            return Some("12312".to_string());
-        };
+        let diff_time = now - timestamp;
 
-        todo!()
+        if (diff_time.whole_hours() > self.backup_interval as i64) {
+            let timer_format =
+                time::macros::format_description!("[year]-[month]-[day]_[hour][minute]");
+            let time = now.format(timer_format)?;
+
+        }
+
+        Ok("213".to_string())
     }
 
     #[instrument(err(Display), level = "debug")]
