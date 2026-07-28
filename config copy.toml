@@ -40,17 +40,18 @@ archived_number = 7
 # 开发工具的依赖/编译缓存（如 .gradle/caches、npm-cache 等）
 
 exclude = [
-  'pagefile.sys',
-  'hiberfil.sys',
-  'swapfile.sys',
-  'Windows\Temp\*',
-  '%temp%\*',
-  '\$Recycle.Bin',
-  '\System Volume Information',
+  '\pagefile.sys',
+  '\hiberfil.sys',
+  '\swapfile.sys',
+  '\temp',
+  '\*.tmp',
+  '\Windows\Temp\*',
+  '\$Recycle.Bin\*',
+  '\System Volume Information\*',
   '\Windows\SoftwareDistribution\Download\*',
-  '$WINDOWS.~BT',
-  '$WINDOWS.~WS',
-  'Windows.old',
+  '\$WINDOWS.~BT\*',
+  '\$WINDOWS.~WS\*',
+  '\Windows.old\*',
 ]
 # exclude = []
 # 如果需要 SMB 备份, 需要保持该选项为空

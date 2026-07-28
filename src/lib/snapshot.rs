@@ -159,19 +159,19 @@ impl Snapshot {
 
     fn doing(&self, ex_args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
         info!("开始备份");
-        // let output = Command::new("MinSudo.exe")
-        //     // .arg("-NoL")
-        //     .arg(&self.exe_path)
-        //     .args(&self.args)
-        //     .args(ex_args)
-        //     // .arg("/?")
-        //     .output()?;
-
-        let output = Command::new(&self.exe_path)
-            // .args(&self.args)
-            // .args(ex_args)
-            // .arg(r"/?")
+        let output = Command::new("MinSudo.exe")
+            .arg("-NoL")
+            .arg(&self.exe_path)
+            .args(&self.args)
+            .args(ex_args)
+            // .arg("/?")
             .output()?;
+
+        // let output = Command::new(&self.exe_path)
+        //     // .args(&self.args)
+        //     // .args(ex_args)
+        //     // .arg(r"/?")
+        //     .output()?;
 
         if output.status.success() {
             info!("✅ 已备份");

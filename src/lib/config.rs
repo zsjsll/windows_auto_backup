@@ -110,12 +110,7 @@ impl AppConfig {
             hash: hash_file_ext,
         };
 
-        let exclude_args: Vec<String> = self
-            .snapshot
-            .exclude
-            .iter()
-            .map(|x| format!("--exclude:{}", x))
-            .collect();
+        let exclude = format!("--exclude:{}", self.snapshot.exclude.join(","));
 
         let mut args = Vec::with_capacity(50);
 
@@ -126,7 +121,7 @@ impl AppConfig {
             "--FullIfHashIsMissing".into(),
         ]);
 
-        args.extend(exclude_args);
+        // args.extend(exclude_args);
 
         macro_rules! push_flag {
             ($($field:expr => $flag:expr),* $(,)?) => {
@@ -140,6 +135,7 @@ impl AppConfig {
 
         let limit_io_rate = format!("--LimitIORate:{}", self.snapshot.limit_io_rate);
         push_flag!(
+            !self.snapshot.exclude.is_empty()   => exclude,
             self.snapshot.limit_io_rate != 0    => limit_io_rate,
             self.snapshot.save_all_sectors      => "-A",
             self.snapshot.disable_key           => "-W",
