@@ -119,6 +119,7 @@ impl AppConfig {
                     .strip_prefix('%')
                     .and_then(|s| s.strip_suffix('%'))
                     .and_then(|var_name| env::var(var_name).ok())
+                    .map(|env_path| env_path + r"\*")
                     .unwrap_or_else(|| p.clone());
 
                 // 再统一剥离前缀
