@@ -116,11 +116,15 @@ impl AppConfig {
             .map(|p| {
                 // 先解析环境变量
                 let path = p
-                    .strip_prefix('%')
-                    .and_then(|s| s.strip_suffix('%'))
-                    .and_then(|var_name| env::var(var_name).ok())
-                    .map(|env_path| env_path + r"\*")
-                    .unwrap_or_else(|| p.clone());
+                    .find('%')
+                    .and_then(|start| p[start + 1..].find('%').map(|end| (start, start + 1 + end)))
+                    .and_then(|(start, end)| {
+                        let var = &p[start + 1..end];
+                        env::var(var)
+                            .ok()
+                            .map(|val| format!("{}{}{}", &p[..start], val, &p[end + 1..]))
+                    })
+                    .unwrap_or_else(|| p.to_string());
 
                 // 再统一剥离前缀
                 path.strip_prefix(r"C:")
@@ -128,7 +132,6 @@ impl AppConfig {
                     .unwrap_or(path)
             })
             .collect();
-        dbg!(&pre_exclude);
 
         let exclude = format!("--exclude:{}", pre_exclude.join(","));
 
