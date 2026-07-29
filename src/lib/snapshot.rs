@@ -164,7 +164,6 @@ impl Snapshot {
             .arg(&self.exe_path)
             .args(&self.args)
             .args(ex_args)
-            // .arg("/?")
             .output()?;
 
         // let output = Command::new(&self.exe_path)

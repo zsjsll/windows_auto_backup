@@ -1,9 +1,9 @@
 use serde::Deserialize;
 
 use std::fmt::Debug;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::{env, fs};
 
 use windows_version::{OsVersion, revision};
 
@@ -109,8 +109,27 @@ impl AppConfig {
             backup: backup_file_ext,
             hash: hash_file_ext,
         };
+        let pre_exclude: Vec<String> = self
+            .snapshot
+            .exclude
+            .iter()
+            .map(|p| {
+                // 先解析环境变量
+                let path = p
+                    .strip_prefix('%')
+                    .and_then(|s| s.strip_suffix('%'))
+                    .and_then(|var_name| env::var(var_name).ok())
+                    .unwrap_or_else(|| p.clone());
 
-        let exclude = format!("--exclude:{}", self.snapshot.exclude.join(","));
+                // 再统一剥离前缀
+                path.strip_prefix(r"C:")
+                    .map(|s| s.to_string())
+                    .unwrap_or(path)
+            })
+            .collect();
+        dbg!(&pre_exclude);
+
+        let exclude = format!("--exclude:{}", pre_exclude.join(","));
 
         let mut args = Vec::with_capacity(50);
 
