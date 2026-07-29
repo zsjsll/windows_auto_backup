@@ -98,7 +98,7 @@ impl Snapshot {
 
         let diff_hours = (now - timestamp).abs().whole_hours();
 
-        if diff_hours <= self.backup_interval {
+        if diff_hours < self.backup_interval {
             let e = format!("未满足间隔时间: {} 小时", self.backup_interval);
             return Err(e.into());
         }
@@ -130,9 +130,9 @@ impl Snapshot {
 
         let ex_args = vec![
             dist_path.to_string_lossy().to_string(),
-            format!("-o{}", hash_path.to_string_lossy()),
+            format!("-h{}", hash_path.to_string_lossy()),
         ];
-        dbg!(&ex_args);
+
         // 检查是否对文件进行归档, 并对归档文件进行清理
         let has_enough_archived_files = self.has_enough_files(archived_dir);
         let has_enough_backup_files = backup_files.len() > self.archived_number;
@@ -159,8 +159,8 @@ impl Snapshot {
 
     fn doing(&self, ex_args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
         info!("开始备份");
-        let output = Command::new("MinSudo.exe")
-            .arg("-NoL")
+        let output = Command::new("gsudo.exe")
+            // .arg("-NoL")
             .arg(&self.exe_path)
             .args(&self.args)
             .args(ex_args)
