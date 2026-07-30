@@ -1,4 +1,5 @@
 use std::ops::Deref;
+use std::path;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -72,9 +73,32 @@ impl Snapshot {
         Ok(backup_files)
     }
 
-    fn has_enough_files(&self, archived_dir: &Path) -> bool {
-        archived_dir.is_dir()
-            && fs::read_dir(archived_dir)
+    fn get_files(&self, dir: &Path) -> Option<impl Iterator<Item = (PathBuf, SystemTime)>> {
+        let files = fs::read_dir(dir)
+            .ok()?
+            .filter_map(Result::ok)
+            .filter(|entery| entery.metadata().is_ok_and(|x| x.is_file()))
+            .filter(|entry| {
+                entry.path().extension().is_some_and(|ext| {
+                    ext.eq_ignore_ascii_case(&self.file_ext.backup)
+                        || ext.eq_ignore_ascii_case(&self.file_ext.hash)
+                })
+            })
+            .filter_map(|entery| {
+                entery
+                    .metadata()
+                    .ok()?
+                    .modified()
+                    .ok()
+                    .map(|timestamp| (entery.path(), timestamp))
+            });
+
+        Some(files)
+    }
+
+    fn has_enough_files(&self, dir: &Path) -> bool {
+        dir.is_dir()
+            && fs::read_dir(dir)
                 .ok()
                 .is_some_and(|mut p| p.nth(self.archived_number).is_some())
     }
