@@ -7,9 +7,10 @@ mod lib {
     pub mod logs;
     pub mod smb;
     pub mod snapshot;
+    pub mod files;
 }
 
-use lib::{config, logs, smb, snapshot};
+use lib::{config, logs, smb, snapshot,files};
 
 const CONFIG_PATH: &str = "config.toml";
 

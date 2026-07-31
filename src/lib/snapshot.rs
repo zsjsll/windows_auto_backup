@@ -103,6 +103,21 @@ impl Snapshot {
                 .is_some_and(|mut p| p.nth(self.archived_number).is_some())
     }
 
+    fn has_files_num_gt_n(&self, dir: &Path, n: usize) -> bool {
+        let files = self.get_files(dir);
+
+        files.is_some_and(|mut p| p.nth(n).is_some())
+    }
+
+
+
+
+
+
+    fn create_file_name(&self, dir: &Path) {
+        let files = self.get_files(dir);
+    }
+
     fn create_backup_file_name(
         &self,
         backup_files: &[(PathBuf, SystemTime)],
