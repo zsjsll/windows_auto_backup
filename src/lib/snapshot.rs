@@ -1,12 +1,14 @@
 use std::ops::Deref;
-use std::path;
-use std::path::Path;
-use std::path::PathBuf;
+
+use std::path::{Path, PathBuf};
+
 use std::process::Command;
 
 use std::fs;
 use std::io;
 use std::time::SystemTime;
+
+use crate::files::Files;
 
 use encoding_rs::GBK;
 
@@ -103,16 +105,10 @@ impl Snapshot {
                 .is_some_and(|mut p| p.nth(self.archived_number).is_some())
     }
 
-    fn has_files_num_gt_n(&self, dir: &Path, n: usize) -> bool {
-        let files = self.get_files(dir);
-
-        files.is_some_and(|mut p| p.nth(n).is_some())
+    fn has_files_count_gt_n(&self, dir: &Path, ext: &str, n: usize) -> bool {
+        let mut files = Files::new(dir).get_ext_files(ext);
+        files.nth(n - 1).is_some()
     }
-
-
-
-
-
 
     fn create_file_name(&self, dir: &Path) {
         let files = self.get_files(dir);
@@ -150,6 +146,14 @@ impl Snapshot {
             self.system_info, time_string, &self.file_ext.backup
         );
         Ok(backup_file_name)
+    }
+
+    #[instrument(err(Display), level = "debug")]
+    pub fn pre_packup(&self) -> Result<(), Box<dyn std::error::Error>> {
+
+
+
+        Ok(())
     }
 
     #[instrument(err(Display), level = "debug")]
@@ -192,7 +196,10 @@ impl Snapshot {
             warn!("已成功将文件移动到 doc 目录!");
         }
 
-        self.doing(&ex_args)?;
+        let a = self.has_files_count_gt_n(&self.backup_dir, &self.file_ext.backup, 2);
+        dbg!(&a);
+
+        // self.doing(&ex_args)?;
         Ok(())
     }
 

@@ -1,11 +1,13 @@
 use std::{
+    borrow::Cow,
+    ffi::OsStr,
     fs::{self, DirEntry, ReadDir},
     path::{Path, PathBuf},
     time::SystemTime,
 };
 
 pub struct Files {
-    pub dir: PathBuf,
+    dir: PathBuf,
 }
 
 impl Files {
@@ -13,21 +15,37 @@ impl Files {
         Self { dir: dir.into() }
     }
 
-    pub fn all_files(&self) -> impl Iterator<Item = DirEntry> + '_ {
-        fs::read_dir(&self.dir)
+    fn all_files(self) -> impl Iterator<Item = DirEntry> {
+        fs::read_dir(self.dir)
             .into_iter()
             .flatten()
             .filter_map(Result::ok)
-            .filter(|entery| entery.metadata().is_ok_and(|x| x.is_file()))
+            .filter(move |entery| entery.metadata().is_ok_and(|x| x.is_file()))
     }
 
-    pub fn get_ext_file(&self, ext: &str) -> impl Iterator<Item = DirEntry> + '_ {
-        let ext1 = ext.to_ascii_lowercase();
+    pub fn get_ext_files(self, ext: &str) -> impl Iterator<Item = DirEntry> {
+        let ext = ext.to_ascii_lowercase();
         self.all_files().filter(move |entry| {
             entry
                 .path()
                 .extension()
-                .is_some_and(|e| e.eq_ignore_ascii_case(&ext1))
+                .is_some_and(|e| e.eq_ignore_ascii_case(&ext))
         })
+    }
+
+    pub fn get_latest_file(self, ext: &str) {
+        let ext = ext.to_ascii_lowercase();
+
+        let latest = self
+            .get_ext_files(&ext)
+            .filter_map(|entry| {
+                entry
+                    .metadata()
+                    .ok()?
+                    .modified()
+                    .ok()
+                    .map(|x| (entry.path(), x))
+            })
+            .max_by_key(|(_, times)| *times);
     }
 }
