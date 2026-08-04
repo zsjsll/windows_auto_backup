@@ -4,13 +4,13 @@ extern crate tracing;
 mod lib {
     pub mod config;
     // pub mod macros;
+    pub mod files;
     pub mod logs;
     pub mod smb;
     pub mod snapshot;
-    pub mod files;
 }
 
-use lib::{config, logs, smb, snapshot,files};
+use lib::{config, files, logs, smb, snapshot};
 
 const CONFIG_PATH: &str = "config.toml";
 
@@ -28,7 +28,8 @@ fn main() {
 
     let snapshot: snapshot::Snapshot = cfg.generate_snapshot_config().into();
 
-    let _ = snapshot.backup().ok();
+    let _ = snapshot.pre_packup().ok();
+    // let _ = snapshot.backup().ok();
 
     smb.disconnect().ok();
 }

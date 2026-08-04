@@ -1,11 +1,10 @@
 use std::{
-    borrow::Cow,
-    ffi::OsStr,
-    fs::{self, DirEntry, ReadDir},
+    fs::{self, DirEntry},
     path::{Path, PathBuf},
     time::SystemTime,
 };
 
+use time::{OffsetDateTime, macros::offset};
 pub struct Files {
     dir: PathBuf,
 }
@@ -33,19 +32,23 @@ impl Files {
         })
     }
 
-    pub fn get_latest_file(self, ext: &str) {
+    pub fn get_latest_file(self, ext: &str) -> Option<(PathBuf, OffsetDateTime)> {
         let ext = ext.to_ascii_lowercase();
 
-        let latest = self
-            .get_ext_files(&ext)
-            .filter_map(|entry| {
-                entry
-                    .metadata()
-                    .ok()?
-                    .modified()
-                    .ok()
-                    .map(|x| (entry.path(), x))
-            })
-            .max_by_key(|(_, times)| *times);
+        let latest = self.get_ext_files(&ext).max_by_key(|entry| {
+            entry
+                .metadata()
+                .and_then(|o| o.modified())
+                .unwrap_or(SystemTime::UNIX_EPOCH)
+        })?;
+
+        let timestamp: OffsetDateTime = latest.metadata().ok()?.modified().ok()?.into();
+
+        Some((latest.path(), timestamp))
+    }
+
+    pub fn has_files_count_gt_n(self, ext: &str, n: usize) -> bool {
+        let ext = ext.to_ascii_lowercase();
+        self.get_ext_files(&ext).nth(n - 1).is_some()
     }
 }

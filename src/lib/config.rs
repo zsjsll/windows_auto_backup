@@ -29,11 +29,12 @@ struct SmbConfig {
 #[cfg_attr(feature = "dbg", derive(Debug))]
 #[derive(Deserialize)]
 struct SnapshotConfig {
-    exe_path: String,
-    backup_volumes: String,
+    backup_exe_path: String,
+    command_exe_path: String,
     dist_dir: String,
+    backup_volumes: String,
     backup_interval: i64,
-    archived_number: usize,
+    limit_backup_files_count: usize,
     exclude: Vec<String>,
     limit_io_rate: u8,
     save_all_sectors: bool,
@@ -96,7 +97,7 @@ impl AppConfig {
     }
 
     pub fn generate_snapshot_config(&self) -> snapshot::Config {
-        let exe_path = PathBuf::from(r"./").join(&self.snapshot.exe_path);
+        let backup_exe_path = PathBuf::from(r"./").join(&self.snapshot.backup_exe_path);
         // 获取 计算机名字
         let computer_name = hostname::get().unwrap_or("unknown".into());
         let backup_dir = self.get_def_path().join("snapshot").join(computer_name);
@@ -129,7 +130,7 @@ impl AppConfig {
                 // 再统一剥离前缀
                 path.strip_prefix(r"C:")
                     .map(|s| s.to_string())
-                    .unwrap_or(path)
+                    .unwrap_or_else(|| path)
             })
             .collect();
 
@@ -168,10 +169,10 @@ impl AppConfig {
         );
 
         snapshot::Config {
-            exe_path,
+            exe_path: backup_exe_path,
             backup_dir,
             args,
-            archived_number: self.snapshot.archived_number,
+            limit_backup_files_count: self.snapshot.limit_backup_files_count,
             system_info,
             backup_interval: self.snapshot.backup_interval,
             file_ext,
