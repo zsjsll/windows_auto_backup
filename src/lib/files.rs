@@ -4,7 +4,7 @@ use std::{
     time::SystemTime,
 };
 
-use time::{OffsetDateTime, macros::offset};
+use time::OffsetDateTime;
 pub struct Files {
     dir: PathBuf,
 }
@@ -14,7 +14,7 @@ impl Files {
         Self { dir: dir.into() }
     }
 
-    fn all_files(self) -> impl Iterator<Item = DirEntry> {
+    pub fn all_files(self) -> impl Iterator<Item = DirEntry> {
         fs::read_dir(self.dir)
             .into_iter()
             .flatten()

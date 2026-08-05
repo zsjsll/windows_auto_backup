@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 #[cfg_attr(feature = "dbg", derive(Debug))]
 pub struct Config {
-    pub url: PathBuf,
+    pub address: PathBuf,
     pub user: Arc<String>,
     pub passwd: Arc<String>,
 }
@@ -28,18 +28,12 @@ impl Deref for Smb {
 
 impl Smb {
     #[instrument(err(Display), level = "debug")]
-    pub fn connect(&self) -> Result<(), Box<dyn std::error::Error>> {
-        if !self.url.to_string_lossy().starts_with(r"\\") {
-            warn!("进行本地备份");
-            warn!("如果需要 SMB 备份, 请配置 config.toml 中的 snapshot.dist_dir = \"\"");
-            return Ok(());
-        }
-
+    pub fn connect(&self) -> Result<PathBuf, Box<dyn std::error::Error>> {
         info!("🚀 正在建立 SMB 认证通道");
 
-        let output = Command::new(r"net")
+        let output = Command::new("net")
             .arg("use")
-            .arg(&self.url)
+            .arg(&self.address)
             .args(&[
                 &format!(r"/user:{}", self.user.as_str()),
                 self.passwd.as_str(),
@@ -48,11 +42,15 @@ impl Smb {
             .output()?;
 
         if output.status.success() {
-            info!("✅ SMB 认证成功");
-            Ok(())
+            info!("SMB 认证成功");
+            Ok(self.address.clone())
         } else {
             let (err_msg, _, _) = encoding_rs::GBK.decode(&output.stderr);
-            error!("❌ Windows SMB 认证失败");
+            error!("Windows SMB 认证失败");
+            if !self.address.to_string_lossy().starts_with(r"\\") {
+                warn!("检查到为本地备份");
+                return Ok(self.address.clone());
+            }
             Err(err_msg.replace("\n", "").replace("\r", "").trim().into())
         }
     }
@@ -60,21 +58,21 @@ impl Smb {
     /// 运维好习惯：断开与该远程服务器的所有隐式连接
     #[instrument(err(Display), level = "debug")]
     pub fn disconnect(&self) -> Result<(), Box<dyn std::error::Error>> {
-        if !self.url.to_string_lossy().starts_with(r"\\") {
+        if !self.address.to_string_lossy().starts_with(r"\\") {
             return Ok(());
         }
         let output = Command::new("net")
             .arg("use")
-            .arg(&self.url)
+            .arg(&self.address)
             .args(&[r"/del", r"/y"])
             .output()?;
 
         if output.status.success() {
-            info!("✅ 已断开 SMB 连接");
+            info!("已断开 SMB 连接");
             Ok(())
         } else {
             let (err_msg, _, _) = encoding_rs::GBK.decode(&output.stderr);
-            error!("❌ 断开 SMB 连接失败");
+            error!("断开 SMB 连接失败");
             Err(err_msg.replace("\n", "").replace("\r", "").trim().into())
         }
     }

@@ -23,12 +23,15 @@ fn main() {
     let smb: smb::Smb = cfg.generate_smb_config().into();
 
     smb.connect().unwrap();
-
-    cfg.generate_snapshot_config();
+    // cfg.generate_snapshot_config();
 
     let snapshot: snapshot::Snapshot = cfg.generate_snapshot_config().into();
 
-    let _ = snapshot.pre_packup().ok();
+    snapshot.check_backup().unwrap();
+
+    snapshot.init_backup().ok();
+
+
     // let _ = snapshot.backup().ok();
 
     smb.disconnect().ok();

@@ -20,8 +20,7 @@ pub struct AppConfig {
 #[cfg_attr(feature = "dbg", derive(Debug))]
 #[derive(Deserialize)]
 struct SmbConfig {
-    server_ip: String,
-    share_name: String,
+    address: PathBuf,
     username: Arc<String>,
     password: Arc<String>,
 }
@@ -29,9 +28,8 @@ struct SmbConfig {
 #[cfg_attr(feature = "dbg", derive(Debug))]
 #[derive(Deserialize)]
 struct SnapshotConfig {
-    backup_exe_path: String,
-    command_exe_path: String,
-    dist_dir: String,
+    backup_exe_path: PathBuf,
+    command_exe_path: PathBuf,
     backup_volumes: String,
     backup_interval: i64,
     limit_backup_files_count: usize,
@@ -66,19 +64,9 @@ impl AppConfig {
         Ok(config)
     }
 
-    fn get_def_path(&self) -> PathBuf {
-        if self.snapshot.dist_dir.is_empty() {
-            PathBuf::from(r"\\")
-                .join(&self.smb.server_ip)
-                .join(&self.smb.share_name)
-        } else {
-            PathBuf::from(&self.snapshot.dist_dir)
-        }
-    }
     pub fn generate_smb_config(&self) -> smb::Config {
-        let p = self.get_def_path();
         smb::Config {
-            url: p,
+            address: self.smb.address.clone(),
             user: Arc::clone(&self.smb.username),
             passwd: Arc::clone(&self.smb.password),
         }
@@ -97,10 +85,9 @@ impl AppConfig {
     }
 
     pub fn generate_snapshot_config(&self) -> snapshot::Config {
-        let backup_exe_path = PathBuf::from(r"./").join(&self.snapshot.backup_exe_path);
         // 获取 计算机名字
         let computer_name = hostname::get().unwrap_or("unknown".into());
-        let backup_dir = self.get_def_path().join("snapshot").join(computer_name);
+        let backup_dir = self.smb.address.join("snapshot").join(computer_name);
 
         let system_info = self.get_system_info();
 
@@ -110,6 +97,12 @@ impl AppConfig {
             backup: backup_file_ext,
             hash: hash_file_ext,
         };
+
+        let exec_path = snapshot::ExecPath {
+            backup: self.snapshot.backup_exe_path.clone(),
+            command: self.snapshot.command_exe_path.clone(),
+        };
+
         let pre_exclude: Vec<String> = self
             .snapshot
             .exclude
@@ -169,7 +162,7 @@ impl AppConfig {
         );
 
         snapshot::Config {
-            exe_path: backup_exe_path,
+            exec_path,
             backup_dir,
             args,
             limit_backup_files_count: self.snapshot.limit_backup_files_count,
