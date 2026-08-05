@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use time::OffsetDateTime;
 
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
@@ -90,6 +91,7 @@ impl AppConfig {
         let backup_dir = self.smb.address.join("snapshot").join(computer_name);
 
         let system_info = self.get_system_info();
+        let now_utc = OffsetDateTime::now_utc();
 
         let backup_file_ext = "sna".to_string();
         let hash_file_ext = "hsh".to_string();
@@ -166,6 +168,7 @@ impl AppConfig {
             backup_dir,
             args,
             limit_backup_files_count: self.snapshot.limit_backup_files_count,
+            now_utc,
             system_info,
             backup_interval: self.snapshot.backup_interval,
             file_ext,

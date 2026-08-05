@@ -30,6 +30,7 @@ fn main() {
     snapshot.check_backup().unwrap();
 
     snapshot.init_backup().ok();
+    snapshot.start_backup().ok();
 
 
     // let _ = snapshot.backup().ok();

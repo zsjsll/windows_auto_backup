@@ -19,6 +19,7 @@ pub struct Config {
     pub exec_path: ExecPath,
     pub args: Vec<String>,
     pub limit_backup_files_count: usize,
+    pub now_utc: OffsetDateTime,
     pub system_info: String,
     pub backup_interval: i64,
     pub file_ext: FileExt,
@@ -76,20 +77,18 @@ impl Snapshot {
         );
 
         // 获取当前utc时间
-        let now = OffsetDateTime::now_utc();
-        let diff_hours = (now - latest_timestamp).whole_hours();
+
+        let diff_hours = (self.now_utc - latest_timestamp).whole_hours();
         info!("时间间隔: {}h", &diff_hours);
         // 判断是否需要备份
         if diff_hours < self.backup_interval {
             let e = format!("未满足间隔时间: {} 小时", self.backup_interval);
             return Err(e.into());
         }
-
         // 检查并删除上一次的错误备份
+        info!("检查最新备份文件是否完整");
         if latest_backup_file.is_file() {
             let check = format!(r"--QuickCheck:{}", latest_backup_file.to_string_lossy());
-
-            // todo!()
             self.doing(&[check])
                 .inspect(|_| info!("备份文件完整"))
                 .inspect_err(|err| {
@@ -118,7 +117,7 @@ impl Snapshot {
             .has_files_count_gt_n(&self.file_ext.backup, self.limit_backup_files_count);
 
         if has_enough_archived_files && has_enough_backup_files {
-            fs::remove_dir_all(archived_dir)?;
+            fs::remove_dir_all(archived_dir).ok();
             warn!("达到归档数量上限, 已进行清理");
         }
 
@@ -130,13 +129,15 @@ impl Snapshot {
                 .try_for_each(|file| {
                     let destination = archived_dir.join(file.file_name());
                     fs::rename(file.path(), &destination)
-                })?;
+                })
+                .ok();
             warn!("已成功将文件移动到 {} 目录!", archived_dir.display());
         }
         Ok(())
     }
 
-    pub fn start_backup() -> Result<(), Box<dyn std::error::Error>> {
+    pub fn start_backup(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let a=self.now_utc;
         // 判断备份方式
         // 创建文件名字
         todo!()
