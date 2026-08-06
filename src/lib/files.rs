@@ -42,9 +42,9 @@ impl Files {
                 .unwrap_or(SystemTime::UNIX_EPOCH)
         })?;
 
-        let timestamp: OffsetDateTime = latest.metadata().ok()?.modified().ok()?.into();
+        let file_date_time: OffsetDateTime = latest.metadata().ok()?.modified().ok()?.into();
 
-        Some((latest.path(), timestamp))
+        Some((latest.path(), file_date_time))
     }
 
     pub fn has_files_count_gt_n(self, ext: &str, n: usize) -> bool {

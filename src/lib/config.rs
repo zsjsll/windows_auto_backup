@@ -91,7 +91,8 @@ impl AppConfig {
         let backup_dir = self.smb.address.join("snapshot").join(computer_name);
 
         let system_info = self.get_system_info();
-        let now_utc = OffsetDateTime::now_utc();
+        let now_date_time =
+            OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
 
         let backup_file_ext = "sna";
         let hash_file_ext = "hsh";
@@ -168,7 +169,7 @@ impl AppConfig {
             backup_dir,
             args,
             limit_backup_files_count: self.snapshot.limit_backup_files_count,
-            now_utc,
+            now_date_time,
             system_info,
             backup_interval: self.snapshot.backup_interval,
             file_ext,

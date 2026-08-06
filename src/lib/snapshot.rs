@@ -20,7 +20,7 @@ pub struct Config {
     pub exec_path: ExecPath,
     pub args: Vec<String>,
     pub limit_backup_files_count: usize,
-    pub now_utc: OffsetDateTime,
+    pub now_date_time: OffsetDateTime,
     pub system_info: String,
     pub backup_interval: i64,
     pub file_ext: FileExt,
@@ -61,7 +61,7 @@ impl Snapshot {
     #[instrument(err(Display), level = "debug")]
     pub fn check_backup(&self) -> Result<(), Box<dyn std::error::Error>> {
         // 获取最新文件的信息
-        let (latest_backup_file, latest_timestamp) = Files::new(&self.backup_dir)
+        let (latest_backup_file, latest_file_date_time) = Files::new(&self.backup_dir)
             .get_latest_file(self.file_ext.backup)
             .unwrap_or_else(|| (self.backup_dir.clone(), OffsetDateTime::UNIX_EPOCH));
 
@@ -73,10 +73,10 @@ impl Snapshot {
         info!(
             "最新备份文件信息\n路径: {}\n时间: {}",
             latest_backup_file.display(),
-            latest_timestamp.to_offset(utc_offset)
+            latest_file_date_time.to_offset(utc_offset)
         );
 
-        let diff_hours = (self.now_utc - latest_timestamp).whole_hours();
+        let diff_hours = (self.now_date_time - latest_file_date_time).whole_hours();
         info!("时间间隔: {}h", &diff_hours);
         // 判断是否需要备份
         if diff_hours < self.backup_interval {
@@ -136,7 +136,7 @@ impl Snapshot {
 
     pub fn start_backup(&self) -> Result<(), Box<dyn std::error::Error>> {
         let args = self.create_backup_args();
-        self.doing(&args)?;
+        // self.doing(&args)?;
 
         Ok(())
     }
@@ -144,7 +144,7 @@ impl Snapshot {
     fn create_backup_args(&self) -> Vec<String> {
         // 判断备份方式
         let timer_format = format_description!("[year]-[month]-[day]_[hour][minute]");
-        let time_string = self.now_utc.format(timer_format).unwrap_or_default();
+        let time_string = self.now_date_time.format(timer_format).unwrap_or_default();
 
         let backup_file_name = format!(
             "{}_{}.{}",
