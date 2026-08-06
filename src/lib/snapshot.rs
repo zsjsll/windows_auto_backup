@@ -5,13 +5,14 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use std::fs;
-use std::io;
-use std::time::SystemTime;
 
 use crate::files::Files;
 
 use encoding_rs::GBK;
-use time::{OffsetDateTime, macros::offset};
+use time::{
+    OffsetDateTime,
+    macros::{format_description, offset},
+};
 
 #[cfg_attr(feature = "dbg", derive(Debug))]
 pub struct Config {
@@ -28,8 +29,8 @@ pub struct Config {
 #[cfg_attr(feature = "dbg", derive(Debug))]
 
 pub struct FileExt {
-    pub backup: String,
-    pub hash: String,
+    pub backup: &'static str,
+    pub hash: &'static str,
 }
 
 #[cfg_attr(feature = "dbg", derive(Debug))]
@@ -61,22 +62,19 @@ impl Snapshot {
     pub fn check_backup(&self) -> Result<(), Box<dyn std::error::Error>> {
         // 获取最新文件的信息
         let (latest_backup_file, latest_timestamp) = Files::new(&self.backup_dir)
-            .get_latest_file(&self.file_ext.backup)
+            .get_latest_file(self.file_ext.backup)
             .unwrap_or_else(|| (self.backup_dir.clone(), OffsetDateTime::UNIX_EPOCH));
 
         // 获取时区偏移量
         let utc_offset = OffsetDateTime::now_local()
             .ok()
             .map(|v| v.offset())
-            .unwrap_or(offset!(+8));
-
+            .unwrap_or_else(|| offset!(+8));
         info!(
             "最新备份文件信息\n路径: {}\n时间: {}",
             latest_backup_file.display(),
             latest_timestamp.to_offset(utc_offset)
         );
-
-        // 获取当前utc时间
 
         let diff_hours = (self.now_utc - latest_timestamp).whole_hours();
         info!("时间间隔: {}h", &diff_hours);
@@ -96,25 +94,25 @@ impl Snapshot {
                     error!("备份文件错误, 进行清理");
 
                     fs::remove_file(&latest_backup_file).ok();
-                    let latest_hash_file = latest_backup_file.with_extension(&self.file_ext.hash);
+                    let latest_hash_file = latest_backup_file.with_extension(self.file_ext.hash);
                     fs::remove_file(&latest_hash_file).ok();
                 })
                 .ok();
         }
-
         Ok(())
     }
 
     pub fn init_backup(&self) -> Result<(), Box<dyn std::error::Error>> {
         // 创建需要的目录
+        info!("初始化备份信息");
         let archived_dir = &self.backup_dir.join("archived");
         fs::create_dir_all(archived_dir).ok();
 
         // 检查是否对文件进行归档, 并对归档文件进行清理
         let has_enough_backup_files = Files::new(&self.backup_dir)
-            .has_files_count_gt_n(&self.file_ext.backup, self.limit_backup_files_count);
+            .has_files_count_gt_n(self.file_ext.backup, self.limit_backup_files_count);
         let has_enough_archived_files = Files::new(archived_dir)
-            .has_files_count_gt_n(&self.file_ext.backup, self.limit_backup_files_count);
+            .has_files_count_gt_n(self.file_ext.backup, self.limit_backup_files_count);
 
         if has_enough_archived_files && has_enough_backup_files {
             fs::remove_dir_all(archived_dir).ok();
@@ -137,10 +135,46 @@ impl Snapshot {
     }
 
     pub fn start_backup(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let a=self.now_utc;
+        let args = self.create_backup_args();
+        self.doing(&args)?;
+
+        Ok(())
+    }
+
+    fn create_backup_args(&self) -> Vec<String> {
         // 判断备份方式
-        // 创建文件名字
-        todo!()
+        let timer_format = format_description!("[year]-[month]-[day]_[hour][minute]");
+        let time_string = self.now_utc.format(timer_format).unwrap_or_default();
+
+        let backup_file_name = format!(
+            "{}_{}.{}",
+            self.system_info, time_string, self.file_ext.backup
+        );
+
+        let backup_volumes = &self.args[0];
+        let backup_file_path = self.backup_dir.join(backup_file_name);
+
+        let mut args: Vec<String> = Vec::with_capacity(30);
+        args.extend_from_slice(&[
+            backup_volumes.into(),
+            backup_file_path.to_string_lossy().into(),
+        ]);
+
+        let hash_arg = Files::new(&self.backup_dir)
+            .get_latest_file(&self.file_ext.hash)
+            .map(|(f, _)| {
+                info!("创建 [差异备份] 参数");
+                format!("-h{}", f.to_string_lossy())
+            })
+            .unwrap_or_else(|| {
+                info!("创建 [完整备份] 参数");
+                let hash_file_path = backup_file_path.with_extension(self.file_ext.hash);
+                format!("-o{}", hash_file_path.to_string_lossy())
+            });
+
+        args.push(hash_arg);
+        args.extend_from_slice(&self.args[1..]);
+        args
     }
 
     fn doing(&self, args: &[String]) -> Result<(), Box<dyn std::error::Error>> {

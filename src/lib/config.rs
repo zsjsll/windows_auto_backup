@@ -93,8 +93,8 @@ impl AppConfig {
         let system_info = self.get_system_info();
         let now_utc = OffsetDateTime::now_utc();
 
-        let backup_file_ext = "sna".to_string();
-        let hash_file_ext = "hsh".to_string();
+        let backup_file_ext = "sna";
+        let hash_file_ext = "hsh";
         let file_ext = snapshot::FileExt {
             backup: backup_file_ext,
             hash: hash_file_ext,
@@ -131,13 +131,13 @@ impl AppConfig {
 
         let exclude = format!("--exclude:{}", pre_exclude.join(","));
 
-        let mut args = Vec::with_capacity(50);
+        let mut args = Vec::with_capacity(20);
 
-        args.extend([
+        args.extend_from_slice(&[
             self.snapshot.backup_volumes.clone(),
             "-L0".into(),
             "--CreateDir".into(),
-            "--FullIfHashIsMissing".into(),
+            // "--FullIfHashIsMissing".into(),
         ]);
 
         // args.extend(exclude_args);
