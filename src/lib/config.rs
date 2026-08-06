@@ -46,20 +46,19 @@ struct SnapshotConfig {
 impl AppConfig {
     #[instrument(err(Display), level = "debug")]
     pub fn new(path: impl AsRef<Path> + Debug) -> Result<Self, Box<dyn std::error::Error>> {
-        // 🏅 1. 手动把入参带进来打印，想要就要，不想要可以随时删掉
         info!(
-            "🚀 正在加载自定义 TOML 配置文件, 路径: {}",
+            "正在加载自定义 TOML 配置文件, 路径: {}",
             path.as_ref().display()
         );
 
         // 🌟 2. 读文件：如果翻车，用 map_err 物理拦截，打印最纯净的多行文本错误，然后用 ? 拍扁往上抛
         let config_content = fs::read_to_string(path).inspect_err(|_| {
-            error!("❌ 读取配置文件失败");
+            error!("读取配置文件失败");
         })?;
 
         // 🌟 3. 解析 TOML：如果翻车，同样原地打日志拦截，支持多行平铺展开
         let config: Self = toml::from_str(&config_content).inspect_err(|_| {
-            error!("❌ TOML 语法解析失败");
+            error!("TOML 语法解析失败");
         })?;
 
         Ok(config)

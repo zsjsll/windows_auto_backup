@@ -4,7 +4,6 @@ use std::{
     time::SystemTime,
 };
 
-use time::OffsetDateTime;
 pub struct Files {
     dir: PathBuf,
 }
@@ -32,19 +31,15 @@ impl Files {
         })
     }
 
-    pub fn get_latest_file(self, ext: &str) -> Option<(PathBuf, OffsetDateTime)> {
+    pub fn get_latest_file(self, ext: &str) -> Option<DirEntry> {
         let ext = ext.to_ascii_lowercase();
 
-        let latest = self.get_ext_files(&ext).max_by_key(|entry| {
+        self.get_ext_files(&ext).max_by_key(|entry| {
             entry
                 .metadata()
                 .and_then(|o| o.modified())
                 .unwrap_or(SystemTime::UNIX_EPOCH)
-        })?;
-
-        let file_date_time: OffsetDateTime = latest.metadata().ok()?.modified().ok()?.into();
-
-        Some((latest.path(), file_date_time))
+        })
     }
 
     pub fn has_files_count_gt_n(self, ext: &str, n: usize) -> bool {

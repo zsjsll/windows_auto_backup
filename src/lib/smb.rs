@@ -29,7 +29,7 @@ impl Deref for Smb {
 impl Smb {
     #[instrument(err(Display), level = "debug")]
     pub fn connect(&self) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        info!("🚀 正在建立 SMB 认证通道");
+        info!("正在建立 SMB 认证通道");
 
         let output = Command::new("net")
             .arg("use")

@@ -1,10 +1,7 @@
-use std::ops::Deref;
-
-use std::path::PathBuf;
-
-use std::process::Command;
-
 use std::fs;
+use std::ops::Deref;
+use std::path::PathBuf;
+use std::process::Command;
 
 use crate::files::Files;
 
@@ -61,22 +58,28 @@ impl Snapshot {
     #[instrument(err(Display), level = "debug")]
     pub fn check_backup(&self) -> Result<(), Box<dyn std::error::Error>> {
         // 获取最新文件的信息
-        let (latest_backup_file, latest_file_date_time) = Files::new(&self.backup_dir)
-            .get_latest_file(self.file_ext.backup)
-            .unwrap_or_else(|| (self.backup_dir.clone(), OffsetDateTime::UNIX_EPOCH));
-
+        let latest_backup_file = Files::new(&self.backup_dir).get_latest_file(self.file_ext.backup);
+        let latest_backup_file_path = latest_backup_file
+            .as_ref()
+            .map(|f| f.path())
+            .unwrap_or(self.backup_dir.clone());
+        // 获取时间
+        let latest_backup_date_time = latest_backup_file
+            .as_ref()
+            .and_then(|f| f.metadata().ok()?.modified().ok())
+            .map(OffsetDateTime::from)
+            .unwrap_or(OffsetDateTime::UNIX_EPOCH);
         // 获取时区偏移量
-        let utc_offset = OffsetDateTime::now_local()
-            .ok()
-            .map(|v| v.offset())
-            .unwrap_or_else(|| offset!(+8));
+        let offset = self.now_date_time.offset();
+        let offset = offset.is_utc().then_some(offset!(+8)).unwrap_or(offset);
+
         info!(
             "最新备份文件信息\n路径: {}\n时间: {}",
-            latest_backup_file.display(),
-            latest_file_date_time.to_offset(utc_offset)
+            latest_backup_file_path.display(),
+            latest_backup_date_time.to_offset(offset)
         );
 
-        let diff_hours = (self.now_date_time - latest_file_date_time).whole_hours();
+        let diff_hours = (self.now_date_time - latest_backup_date_time).whole_hours();
         info!("时间间隔: {}h", &diff_hours);
         // 判断是否需要备份
         if diff_hours < self.backup_interval {
@@ -84,18 +87,22 @@ impl Snapshot {
             return Err(e.into());
         }
         // 检查并删除上一次的错误备份
-        info!("检查最新备份文件是否完整");
-        if latest_backup_file.is_file() {
-            let check = format!(r"--QuickCheck:{}", latest_backup_file.to_string_lossy());
+        info!("检查最新备份文件完整性");
+        if latest_backup_file_path.is_file() {
+            let check = format!(
+                r"--QuickCheck:{}",
+                latest_backup_file_path.to_string_lossy()
+            );
             self.doing(&[check])
-                .inspect(|_| info!("备份文件完整"))
+                .inspect(|_| info!("备份文件完整检查通过"))
                 .inspect_err(|err| {
                     error!(err);
                     error!("备份文件错误, 进行清理");
 
-                    fs::remove_file(&latest_backup_file).ok();
-                    let latest_hash_file = latest_backup_file.with_extension(self.file_ext.hash);
-                    fs::remove_file(&latest_hash_file).ok();
+                    fs::remove_file(&latest_backup_file_path).ok();
+                    let latest_hash_file_path =
+                        latest_backup_file_path.with_extension(self.file_ext.hash);
+                    fs::remove_file(latest_hash_file_path).ok();
                 })
                 .ok();
         }
@@ -162,9 +169,9 @@ impl Snapshot {
 
         let hash_arg = Files::new(&self.backup_dir)
             .get_latest_file(&self.file_ext.hash)
-            .map(|(f, _)| {
+            .map(|f| {
                 info!("创建 [差异备份] 参数");
-                format!("-h{}", f.to_string_lossy())
+                format!("-h{}", f.path().to_string_lossy())
             })
             .unwrap_or_else(|| {
                 info!("创建 [完整备份] 参数");
