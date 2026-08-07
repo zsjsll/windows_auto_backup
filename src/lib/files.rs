@@ -18,7 +18,7 @@ impl Files {
             .into_iter()
             .flatten()
             .filter_map(Result::ok)
-            .filter(move |entery| entery.metadata().is_ok_and(|x| x.is_file()))
+            .filter(|entry| entry.file_type().is_ok_and(|ft| ft.is_file()))
     }
 
     pub fn get_ext_files(self, ext: &str) -> impl Iterator<Item = DirEntry> {

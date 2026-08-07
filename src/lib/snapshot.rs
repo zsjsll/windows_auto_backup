@@ -121,24 +121,46 @@ impl Snapshot {
         let has_enough_archived_files = Files::new(archived_dir)
             .has_files_count_gt_n(self.file_ext.backup, self.limit_backup_files_count);
 
-        if has_enough_archived_files && has_enough_backup_files {
-            fs::remove_dir_all(archived_dir).ok();
-            warn!("达到归档数量上限, 已进行清理");
+        if !has_enough_backup_files {
+            info!("备份目录文件数量小于");
+            return Ok(());
         }
 
-        if has_enough_backup_files {
-            fs::create_dir_all(archived_dir).ok();
-
-            Files::new(&self.backup_dir)
-                .all_files()
-                .try_for_each(|file| {
-                    let destination = archived_dir.join(file.file_name());
-                    fs::rename(file.path(), &destination)
-                })
+        // 需要清理：先清理归档目录（如果归档也满了）
+        if has_enough_archived_files {
+            info!("达到归档数量上限, 进行清理");
+            fs::remove_dir_all(archived_dir)
+                .inspect_err(|e| error!("清理失败: {}", e))
                 .ok();
-            warn!("已成功将文件移动到 {} 目录!", archived_dir.display());
         }
+
+        // 创建归档目录并移动文件
+        fs::create_dir_all(archived_dir).ok();
+        move_files_to_archive(&self.backup_dir, archived_dir);
+
+        warn!("已成功将文件移动到 {} 目录!", archived_dir.display());
         Ok(())
+
+        // if has_enough_archived_files && has_enough_backup_files {
+        //     fs::remove_dir_all(archived_dir)
+        //         .inspect_err(|e| error!("清理失败: {}", e))
+        //         .ok();
+        //     warn!("达到归档数量上限, 已进行清理");
+        // }
+
+        // if has_enough_backup_files {
+        //     fs::create_dir_all(archived_dir).ok();
+
+        //     Files::new(&self.backup_dir).all_files().for_each(|file| {
+        //         let destination = archived_dir.join(file.file_name());
+        //         fs::rename(file.path(), &destination)
+        //             .inspect_err(|e| error!("归档失败: {}", e))
+        //             .ok();
+        //     });
+
+        //     warn!("已成功归档到 {} 目录!", archived_dir.display());
+        // }
+        // Ok(())
     }
 
     pub fn start_backup(&self) -> Result<(), Box<dyn std::error::Error>> {
