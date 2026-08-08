@@ -1,7 +1,7 @@
-use std::fs;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::process::Command;
+use std::{fs, path::Path};
 
 use crate::files::Files;
 
@@ -55,8 +55,85 @@ impl Deref for Snapshot {
 }
 
 impl Snapshot {
+    fn check_backup_interval(
+        &self,
+        latest_backup_date_time: OffsetDateTime,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let interval_hours = (self.now_date_time - latest_backup_date_time).whole_hours();
+        info!("时间间隔: {}h", &interval_hours);
+        // 判断是否需要备份
+        if interval_hours < self.backup_interval {
+            let e = format!("未满足间隔时间: {} 小时", self.backup_interval);
+            return Err(e.into());
+        }
+        info!("已满足间隔时间: {} 小时", self.backup_interval);
+        Ok(())
+    }
+
+    fn check_backup_file(
+        &self,
+        latest_backup_file_path: &Path,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if latest_backup_file_path.is_dir() {
+            info!("不存在备份文件, 跳过检查");
+            return Ok(());
+        }
+        let quick_check = format!(
+            r"--QuickCheck:{}",
+            latest_backup_file_path.to_string_lossy()
+        );
+        self.doing(&[quick_check])
+            .inspect(|_| info!("备份文件完整, 通过检查"))
+            .inspect_err(|_| {
+                warn!("备份文件错误, 清理完成");
+            })
+            .ok();
+        Ok(())
+    }
+
+    fn check_backup_dir(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let archived_dir = &self.backup_dir.join("archived");
+        fs::create_dir_all(archived_dir).ok();
+
+        // 检查是否对文件进行归档, 并对归档文件进行清理
+        let has_enough_backup_files = Files::new(&self.backup_dir)
+            .has_files_count_gt_n(self.file_ext.backup, self.limit_backup_files_count);
+
+        if !has_enough_backup_files {
+            info!(
+                "文件数量少于{}份, 不需要归档",
+                self.limit_backup_files_count
+            );
+            return Ok(());
+        }
+
+        info!(
+            "文件数量已到达或超过{}份, 需要进行归档",
+            self.limit_backup_files_count
+        );
+
+        info!("清空文件: {}", archived_dir.display());
+        fs::remove_dir_all(archived_dir)
+            .inspect(|_| info!("清空成功"))
+            .inspect_err(|e| error!("清空失败: {}", e))
+            .ok();
+        fs::create_dir_all(archived_dir).ok();
+
+        info!("归档文件到: {}", archived_dir.display());
+
+        Files::new(&self.backup_dir).all_files().for_each(|file| {
+            let destination = archived_dir.join(file.file_name());
+            fs::rename(file.path(), destination)
+                .inspect(|_| info!("归档成功"))
+                .inspect_err(|e| error!("归档失败: {}", e))
+                .ok();
+        });
+
+        Ok(())
+    }
+
     #[instrument(err(Display), level = "debug")]
-    pub fn check_backup(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn init_backup(&self) -> Result<(), Box<dyn std::error::Error>> {
         // 获取最新文件的信息
         let latest_backup_file = Files::new(&self.backup_dir).get_latest_file(self.file_ext.backup);
         let latest_backup_file_path = latest_backup_file
@@ -71,7 +148,7 @@ impl Snapshot {
             .unwrap_or(OffsetDateTime::UNIX_EPOCH);
         // 获取时区偏移量
         let offset = self.now_date_time.offset();
-        let offset = offset.is_utc().then_some(offset!(+8)).unwrap_or(offset);
+        let offset = offset.is_utc().then(|| offset!(+8)).unwrap_or(offset);
 
         info!(
             "最新备份文件信息\n路径: {}\n时间: {}",
@@ -79,88 +156,16 @@ impl Snapshot {
             latest_backup_date_time.to_offset(offset)
         );
 
-        let diff_hours = (self.now_date_time - latest_backup_date_time).whole_hours();
-        info!("时间间隔: {}h", &diff_hours);
-        // 判断是否需要备份
-        if diff_hours < self.backup_interval {
-            let e = format!("未满足间隔时间: {} 小时", self.backup_interval);
-            return Err(e.into());
-        }
-        // 检查并删除上一次的错误备份
+        info!("检查时间间隔");
+        self.check_backup_interval(latest_backup_date_time)?;
+
         info!("检查最新备份文件完整性");
-        if latest_backup_file_path.is_file() {
-            let check = format!(
-                r"--QuickCheck:{}",
-                latest_backup_file_path.to_string_lossy()
-            );
-            self.doing(&[check])
-                .inspect(|_| info!("备份文件完整检查通过"))
-                .inspect_err(|err| {
-                    error!(err);
-                    error!("备份文件错误, 进行清理");
+        self.check_backup_file(&latest_backup_file_path).ok();
 
-                    fs::remove_file(&latest_backup_file_path).ok();
-                    let latest_hash_file_path =
-                        latest_backup_file_path.with_extension(self.file_ext.hash);
-                    fs::remove_file(latest_hash_file_path).ok();
-                })
-                .ok();
-        }
+        info!("检查是否需要归档");
+        self.check_backup_dir().ok();
+
         Ok(())
-    }
-
-    pub fn init_backup(&self) -> Result<(), Box<dyn std::error::Error>> {
-        // 创建需要的目录
-        info!("初始化备份信息");
-        let archived_dir = &self.backup_dir.join("archived");
-        fs::create_dir_all(archived_dir).ok();
-
-        // 检查是否对文件进行归档, 并对归档文件进行清理
-        let has_enough_backup_files = Files::new(&self.backup_dir)
-            .has_files_count_gt_n(self.file_ext.backup, self.limit_backup_files_count);
-        let has_enough_archived_files = Files::new(archived_dir)
-            .has_files_count_gt_n(self.file_ext.backup, self.limit_backup_files_count);
-
-        if !has_enough_backup_files {
-            info!("备份目录文件数量小于");
-            return Ok(());
-        }
-
-        // 需要清理：先清理归档目录（如果归档也满了）
-        if has_enough_archived_files {
-            info!("达到归档数量上限, 进行清理");
-            fs::remove_dir_all(archived_dir)
-                .inspect_err(|e| error!("清理失败: {}", e))
-                .ok();
-        }
-
-        // 创建归档目录并移动文件
-        fs::create_dir_all(archived_dir).ok();
-        move_files_to_archive(&self.backup_dir, archived_dir);
-
-        warn!("已成功将文件移动到 {} 目录!", archived_dir.display());
-        Ok(())
-
-        // if has_enough_archived_files && has_enough_backup_files {
-        //     fs::remove_dir_all(archived_dir)
-        //         .inspect_err(|e| error!("清理失败: {}", e))
-        //         .ok();
-        //     warn!("达到归档数量上限, 已进行清理");
-        // }
-
-        // if has_enough_backup_files {
-        //     fs::create_dir_all(archived_dir).ok();
-
-        //     Files::new(&self.backup_dir).all_files().for_each(|file| {
-        //         let destination = archived_dir.join(file.file_name());
-        //         fs::rename(file.path(), &destination)
-        //             .inspect_err(|e| error!("归档失败: {}", e))
-        //             .ok();
-        //     });
-
-        //     warn!("已成功归档到 {} 目录!", archived_dir.display());
-        // }
-        // Ok(())
     }
 
     pub fn start_backup(&self) -> Result<(), Box<dyn std::error::Error>> {

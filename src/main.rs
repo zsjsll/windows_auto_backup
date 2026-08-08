@@ -27,11 +27,8 @@ fn main() {
 
     let snapshot: snapshot::Snapshot = cfg.generate_snapshot_config().into();
 
-    snapshot.check_backup().unwrap();
-
-    snapshot.init_backup().ok();
+    snapshot.init_backup().unwrap();
     snapshot.start_backup().ok();
-
 
     // let _ = snapshot.backup().ok();
 
