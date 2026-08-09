@@ -60,7 +60,7 @@ impl Snapshot {
         latest_backup_date_time: OffsetDateTime,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let interval_hours = (self.now_date_time - latest_backup_date_time).whole_hours();
-        info!("时间间隔: {}h", &interval_hours);
+        info!("间隔时间: {}h", &interval_hours);
         // 判断是否需要备份
         if interval_hours < self.backup_interval {
             let e = format!("未满足条件, 间隔时间 > {}h", self.backup_interval);

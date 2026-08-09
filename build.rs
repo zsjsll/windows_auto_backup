@@ -6,6 +6,6 @@ fn main() {
     let target_dir = Path::new(&manifest_dir).join("target").join(&profile);
 
     println!("cargo:warning=🔥 11111111111111111111111111111111");
-    println!("cargo:warning={}",&manifest_dir);
+    println!("cargo:warning={}",&target_dir.display());
     // panic!("BUILD_RS_IS_RUNNING_PANIC");
 }
