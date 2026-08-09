@@ -44,6 +44,10 @@ impl Files {
 
     pub fn has_files_count_gt_n(self, ext: &str, n: usize) -> bool {
         let ext = ext.to_ascii_lowercase();
-        self.get_ext_files(&ext).nth(n - 1).is_some()
+
+        if n > 0 {
+            return self.get_ext_files(&ext).nth(n - 1).is_some();
+        }
+        return true;
     }
 }

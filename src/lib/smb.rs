@@ -68,11 +68,9 @@ impl Smb {
             .output()?;
 
         if output.status.success() {
-            info!("已断开 SMB 连接");
             Ok(())
         } else {
             let (err_msg, _, _) = encoding_rs::GBK.decode(&output.stderr);
-            error!("断开 SMB 连接失败");
             Err(err_msg.replace("\n", "").replace("\r", "").trim().into())
         }
     }

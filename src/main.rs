@@ -28,9 +28,14 @@ fn main() {
     let snapshot: snapshot::Snapshot = cfg.generate_snapshot_config().into();
 
     snapshot.init_backup().unwrap();
-    snapshot.start_backup().ok();
+    snapshot
+        .start_backup()
+        .inspect(|_| info!("备份完成"))
+        .inspect_err(|err| error!("出错了: {}", err))
+        .ok();
 
-    // let _ = snapshot.backup().ok();
-
-    smb.disconnect().ok();
+    smb.disconnect()
+        .inspect(|_| info!("已断开 SMB 连接"))
+        .inspect_err(|err| error!("断开 SMB 连接失败: {}", err))
+        .ok();
 }

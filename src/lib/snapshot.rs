@@ -63,10 +63,10 @@ impl Snapshot {
         info!("时间间隔: {}h", &interval_hours);
         // 判断是否需要备份
         if interval_hours < self.backup_interval {
-            let e = format!("未满足间隔时间: {} 小时", self.backup_interval);
+            let e = format!("未满足条件, 间隔时间 > {}h", self.backup_interval);
             return Err(e.into());
         }
-        info!("已满足间隔时间: {} 小时", self.backup_interval);
+        info!("已满足条件, 间隔时间 > {}h", self.backup_interval);
         Ok(())
     }
 
@@ -93,41 +93,40 @@ impl Snapshot {
 
     fn check_backup_dir(&self) -> Result<(), Box<dyn std::error::Error>> {
         let archived_dir = &self.backup_dir.join("archived");
-        fs::create_dir_all(archived_dir).ok();
 
         // 检查是否对文件进行归档, 并对归档文件进行清理
         let has_enough_backup_files = Files::new(&self.backup_dir)
             .has_files_count_gt_n(self.file_ext.backup, self.limit_backup_files_count);
 
         if !has_enough_backup_files {
-            info!(
-                "文件数量少于{}份, 不需要归档",
-                self.limit_backup_files_count
-            );
+            info!("文件数量 < {}份, 不需要归档", self.limit_backup_files_count);
             return Ok(());
         }
 
         info!(
-            "文件数量已到达或超过{}份, 需要进行归档",
+            "文件数量 >= {}份, 需要进行归档",
             self.limit_backup_files_count
         );
 
-        info!("清空文件: {}", archived_dir.display());
-        fs::remove_dir_all(archived_dir)
-            .inspect(|_| info!("清空成功"))
-            .inspect_err(|e| error!("清空失败: {}", e))
-            .ok();
-        fs::create_dir_all(archived_dir).ok();
+        if archived_dir.is_dir() {
+            info!("发现并清空原归档文件夹: {}", archived_dir.display());
+            fs::remove_dir_all(archived_dir)
+                .inspect(|_| info!("清空成功"))
+                .inspect_err(|e| error!("清空失败: {}", e))
+                .ok();
+        }
 
         info!("归档文件到: {}", archived_dir.display());
 
-        Files::new(&self.backup_dir).all_files().for_each(|file| {
-            let destination = archived_dir.join(file.file_name());
-            fs::rename(file.path(), destination)
-                .inspect(|_| info!("归档成功"))
-                .inspect_err(|e| error!("归档失败: {}", e))
-                .ok();
-        });
+        let temp_dir = &self
+            .backup_dir
+            .parent()
+            .map(|dir| dir.join("temp"))
+            .ok_or("没有父目录, 无法完成归档")?;
+
+        fs::rename(&self.backup_dir, temp_dir)?;
+        fs::create_dir_all(&self.backup_dir)?;
+        fs::rename(temp_dir, archived_dir)?;
 
         Ok(())
     }
@@ -160,17 +159,19 @@ impl Snapshot {
         self.check_backup_interval(latest_backup_date_time)?;
 
         info!("检查最新备份文件完整性");
-        self.check_backup_file(&latest_backup_file_path).ok();
+        self.check_backup_file(&latest_backup_file_path)
+            .inspect_err(|e| error!("{e}"))
+            .ok();
 
         info!("检查是否需要归档");
-        self.check_backup_dir().ok();
+        self.check_backup_dir().inspect_err(|e| error!("{e}")).ok();
 
         Ok(())
     }
 
     pub fn start_backup(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let args = self.create_backup_args();
-        // self.doing(&args)?;
+        let backup_args = self.create_backup_args();
+        self.doing(&backup_args)?;
 
         Ok(())
     }
