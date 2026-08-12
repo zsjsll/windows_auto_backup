@@ -5,8 +5,8 @@ log_level = "debug"
 [smb]
 # 如果地址为本地地址, 就进行本地备份
 address = '\\10.10.0.201\backup'
-username = "toor"
-password = "1313243"
+username = ""
+password = ""
 
 
 # 备份策略配置区块

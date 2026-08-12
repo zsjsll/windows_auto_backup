@@ -1,0 +1,55 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "总任务（依赖链）",
+      "dependsOn": [
+        "1.构建release版本",
+        "2.创建deploy文件夹",
+        "3.复制二进制文件",
+        "4.复制配置文件夹",
+        "5.复制bin文件夹"
+      ],
+      "dependsOrder": "sequence", // 按顺序执行
+      "problemMatcher": []
+    },
+
+    {
+      "label": "1.构建release版本",
+      "type": "cargo",
+      "command": "b",
+      "args": ["-r"],
+      "problemMatcher": ["$rustc"],
+      "group": "build"
+    },
+    {
+      "label": "2.创建deploy文件夹",
+      "type": "shell",
+      "command": "mkdir deploy || exit /b 0",
+      "problemMatcher": []
+    },
+
+    {
+      "label": "3.复制二进制文件",
+      "type": "shell",
+      "command": "xcopy",
+      "args": ["/Y", "target\\release\\rust_snapshot_backup.exe", "deploy\\"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "4.复制配置文件夹",
+      "type": "shell",
+      "command": "xcopy",
+      "args": ["/Y", "config.toml.bak", "deploy\\config.toml"],
+      "problemMatcher": []
+    },
+    {
+      "label": "5.复制bin文件夹",
+      "type": "shell",
+      "command": "xcopy",
+      "args": ["/E", "/Y", "bin", "deploy\\bin\\"],
+      "problemMatcher": []
+    }
+  ]
+}
