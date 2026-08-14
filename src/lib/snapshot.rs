@@ -10,6 +10,7 @@ use time::{
     OffsetDateTime,
     macros::{format_description, offset},
 };
+use tracing_subscriber::fmt::format;
 
 #[cfg_attr(feature = "dbg", derive(Debug))]
 pub struct Config {
@@ -82,12 +83,31 @@ impl Snapshot {
             r"--QuickCheck:{}",
             latest_backup_file_path.to_string_lossy()
         );
-        self.doing(&[quick_check])
-            .inspect(|_| info!("备份文件完整, 通过检查"))
-            .inspect_err(|_| {
+        // let results = self
+        //     .doing(&[quick_check])
+        //     .inspect(|_| info!("备份文件完整, 通过检查"))
+        //     .inspect_err(|e| {
+        //         // e.to_string()
+
+        //         info!("{e}");
+        //         // fs::remove_file(&latest_backup_file_path).ok();
+        //         // let latest_hash_file_path =
+        //         //     latest_backup_file_path.with_extension(self.file_ext.hash);
+        //         // fs::remove_file(latest_hash_file_path).ok();
+        //         warn!("备份文件错误, 清理完成");
+        //     });
+
+        let results = self.doing(&[quick_check])?;
+
+        match results {
+            SnapshotStatus::Ok(_) => {
+                info!("备份文件完整, 通过检查");
+            }
+            SnapshotStatus::Err(_) => {
                 warn!("备份文件错误, 清理完成");
-            })
-            .ok();
+            }
+        }
+
         Ok(())
     }
 
@@ -159,9 +179,7 @@ impl Snapshot {
         self.check_backup_interval(latest_backup_date_time)?;
 
         info!("检查最新备份文件完整性");
-        self.check_backup_file(&latest_backup_file_path)
-            .inspect_err(|e| error!("{e}"))
-            .ok();
+        self.check_backup_file(&latest_backup_file_path)?;
 
         info!("检查是否需要归档");
         self.check_backup_dir().inspect_err(|e| error!("{e}")).ok();
@@ -212,7 +230,7 @@ impl Snapshot {
         args
     }
 
-    fn doing(&self, args: &[String]) -> Result<(), Box<dyn std::error::Error>> {
+    fn doing(&self, args: &[String]) -> Result<SnapshotStatus, Box<dyn std::error::Error>> {
         let mut cmd = if self.exec_path.command.is_file() {
             let mut cmd = Command::new(&self.exec_path.command);
             cmd.arg(&self.exec_path.backup);
@@ -221,17 +239,32 @@ impl Snapshot {
             Command::new(&self.exec_path.backup)
         };
 
-        let output = cmd.args(args).output()?;
+        let output = cmd.args(args).output();
 
-        if output.status.success() {
-            let (msg, _, _) = GBK.decode(&output.stdout);
-            info!("{}", msg);
-            Ok(())
-        } else {
-            let (err_msg, _, _) = GBK.decode(&output.stderr);
-            let (msg, _, _) = GBK.decode(&output.stdout);
-            let err = format!("\n{msg}\n{err_msg}");
-            Err(err.into())
+        match output {
+            // 有可能是权限问题 导致 cmd 无法运行
+            Err(err) => {
+                let e = format!("cmd 无法运行: {}", err);
+                Err(e.into())
+            }
+            // 即使正常运行 还有会有出错的情况 都要处理
+            Ok(results) => {
+                if results.status.success() {
+                    let (msg, _, _) = GBK.decode(&results.stdout);
+                    // info!("{}", msg);
+                    Ok(SnapshotStatus::Ok(msg.to_string()))
+                } else {
+                    let (err_msg, _, _) = GBK.decode(&results.stderr);
+                    let (msg, _, _) = GBK.decode(&results.stdout);
+                    let e = format!("\n{msg}\n{err_msg}");
+                    // warn!("出错了, 请检查原因: {}", e);
+                    Ok(SnapshotStatus::Err(e.to_string()))
+                }
+            }
         }
     }
+}
+enum SnapshotStatus {
+    Ok(String),
+    Err(String),
 }
