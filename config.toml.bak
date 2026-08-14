@@ -12,7 +12,7 @@ password = ''
 # 备份策略配置区块
 [snapshot]
 backup_exe_path = 'bin\snapshot64.exe'
-command_exe_path = 'bin\gsudo.exe'
+command_exe_path = 'bin\sudo\gsudo.exe'
 
 # 要备份的卷
 backup_volumes = "C:" # 这将备份 C:
