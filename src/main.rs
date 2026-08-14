@@ -3,7 +3,7 @@ extern crate tracing;
 
 mod lib {
     pub mod config;
-    // pub mod macros;
+
     pub mod files;
     pub mod logs;
     pub mod smb;
@@ -47,13 +47,12 @@ fn main() {
 
     let snapshot: snapshot::Snapshot = cfg.generate_snapshot_config().into();
 
-    if let Ok(_) = snapshot.init_backup() {
-        snapshot
-            .start_backup()
-            .inspect(|_| info!("备份完成"))
-            .inspect_err(|err| error!("出错了: {}", err))
-            .ok();
-    };
+    if let Ok(_) = snapshot.init_backup().inspect(|_| info!("初始化已完成")) {
+        let _ = snapshot.start_backup().inspect(|ok| match ok {
+            snapshot::SnapshotStatus::Ok(r) => info!("备份成功: {}", r),
+            snapshot::SnapshotStatus::Err(e) => error!("备份失败: {}", e),
+        });
+    }
 
     smb.disconnect()
         .inspect(|_| info!("已断开 SMB 连接"))
