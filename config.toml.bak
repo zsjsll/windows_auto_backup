@@ -4,15 +4,15 @@ log_level = "debug"
 # SMB 服务器相关配置区块
 [smb]
 # 如果地址为本地地址, 就进行本地备份
-address = '\\10.10.0.201\backup'
-username = ""
-password = ""
+address = ''
+username = ''
+password = ''
 
 
 # 备份策略配置区块
 [snapshot]
 backup_exe_path = 'bin\snapshot64.exe'
-command_exe_path = 'bin\sudo\gsudo.exe'
+command_exe_path = 'bin\gsudo.exe'
 
 # 要备份的卷
 backup_volumes = "C:" # 这将备份 C:
@@ -20,7 +20,7 @@ backup_volumes = "C:" # 这将备份 C:
 # volumes = "HD1:*" # 备份物理硬盘中的所有分区
 
 # 备份的间隔时间, 避免重复备份 (h)
-backup_interval = 0
+backup_interval = 10
 
 limit_backup_files_count = 7
 
