@@ -29,6 +29,11 @@ impl Deref for Smb {
 impl Smb {
     #[instrument(err(Display), level = "debug")]
     pub fn connect(&self) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        let add = self.address.to_string_lossy();
+        if add.is_empty() {
+            return Err("地址为空, 无法备份".into());
+        }
+
         info!("正在建立 SMB 认证通道");
 
         let output = Command::new("net")
@@ -47,7 +52,8 @@ impl Smb {
         } else {
             let (err_msg, _, _) = encoding_rs::GBK.decode(&output.stderr);
             error!("Windows SMB 认证失败");
-            if !self.address.to_string_lossy().starts_with(r"\\") {
+
+            if !add.starts_with(r"\\") {
                 warn!("检查到为本地备份");
                 return Ok(self.address.clone());
             }

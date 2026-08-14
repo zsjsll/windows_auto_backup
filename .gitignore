@@ -21,7 +21,7 @@ target
 #.idea/
 
 logs
-config.toml
+config
 .vscode/task-history.ndjson
-
+**/*.log
 deploy

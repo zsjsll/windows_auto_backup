@@ -9,7 +9,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-const CONFIG_PATH: &str = "config.toml";
+const CONFIG_PATH: &str = r"config\config.toml";
 const BAK_PATH: &str = "config.toml.bak";
 
 fn main() {
@@ -21,6 +21,9 @@ fn main() {
     println!("cargo:rerun-if-changed={}", BAK_PATH);
     println!("cargo:rerun-if-changed={}", CONFIG_PATH);
 
+    let config_dir = config_path.parent().unwrap_or_else(|| &manifest_dir);
+
+    fs::create_dir_all(config_dir).ok();
     // 1. config.toml 不存在 -> 从模板复制生成
     if !config_path.exists() {
         if bak_path.exists() {

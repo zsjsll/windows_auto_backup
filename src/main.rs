@@ -12,24 +12,12 @@ mod lib {
 
 use lib::{config, files, logs, smb, snapshot};
 
-const CONFIG_PATH: &str = "config.toml";
-
-/// 解析命令行参数：`-c <path>` 返回 `Some(path)`，否则返回 `None`（使用默认 `config.toml`）
-fn parse_args() -> Option<String> {
-    let mut args = std::env::args();
-    while let Some(arg) = args.next() {
-        if arg == "-c" {
-            return args.next();
-        }
-    }
-    None
-}
+const CONFIG_PATH: &str = r"config\config.toml";
 
 fn main() {
     let logs = logs::Logs::new();
 
-    // 无参数时使用默认 config.toml，有 -c 参数时使用指定路径
-    let config_path = parse_args().unwrap_or_else(|| CONFIG_PATH.to_string());
+    let config_path = CONFIG_PATH;
 
     // 配置文件不存在时报错提醒
     if !std::path::Path::new(&config_path).exists() {
