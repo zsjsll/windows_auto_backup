@@ -14,10 +14,30 @@ use lib::{config, files, logs, smb, snapshot};
 
 const CONFIG_PATH: &str = "config.toml";
 
+/// 解析命令行参数：`-c <path>` 返回 `Some(path)`，否则返回 `None`（使用默认 `config.toml`）
+fn parse_args() -> Option<String> {
+    let mut args = std::env::args();
+    while let Some(arg) = args.next() {
+        if arg == "-c" {
+            return args.next();
+        }
+    }
+    None
+}
+
 fn main() {
     let logs = logs::Logs::new();
 
-    let cfg = config::AppConfig::new(CONFIG_PATH).unwrap();
+    // 无参数时使用默认 config.toml，有 -c 参数时使用指定路径
+    let config_path = parse_args().unwrap_or_else(|| CONFIG_PATH.to_string());
+
+    // 配置文件不存在时报错提醒
+    if !std::path::Path::new(&config_path).exists() {
+        error!("错误: 未找到配置文件: {}", config_path);
+        std::process::exit(1);
+    }
+
+    let cfg = config::AppConfig::new(config_path).unwrap();
 
     logs.update_logger_level(&cfg.generate_logs_config());
     let smb: smb::Smb = cfg.generate_smb_config().into();
