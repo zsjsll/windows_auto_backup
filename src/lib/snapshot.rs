@@ -74,7 +74,7 @@ impl Snapshot {
         &self,
         latest_backup_file_path: &Path,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        if latest_backup_file_path.is_dir() {
+        if !latest_backup_file_path.is_file() {
             info!("不存在备份文件, 跳过检查");
             return Ok(());
         }
@@ -151,6 +151,7 @@ impl Snapshot {
             .as_ref()
             .map(|f| f.path())
             .unwrap_or(self.backup_dir.clone());
+
         // 获取时间
         let latest_backup_date_time = latest_backup_file
             .as_ref()

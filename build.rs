@@ -9,7 +9,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-const CONFIG_PATH: &str = r"config\config.toml";
+const CONFIG_PATH: &str = r"config\default.toml";
 const BAK_PATH: &str = "config.toml.bak";
 
 fn main() {

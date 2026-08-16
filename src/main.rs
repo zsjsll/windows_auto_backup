@@ -10,20 +10,31 @@ mod lib {
     pub mod snapshot;
 }
 
-use lib::{config, files, logs, smb, snapshot};
+use std::{path::PathBuf, process};
 
-const CONFIG_PATH: &str = r"config\config.toml";
+use lib::{config, files, logs, smb, snapshot};
 
 fn main() {
     let logs = logs::Logs::new();
 
-    let config_path = CONFIG_PATH;
+    let config_dir = PathBuf::from("config");
+    let default_config_file_path = config_dir.join("default.toml");
+    let hostname = whoami::hostname().unwrap_or("unknown".into());
+    let username = whoami::username().unwrap_or("unknown".into());
+    let config_file_name = format!(r"{}-[{}].toml", hostname, username);
+    let config_file_path = config_dir.join(config_file_name);
 
-    // 配置文件不存在时报错提醒
-    if !std::path::Path::new(&config_path).exists() {
-        error!("错误: 未找到配置文件: {}", config_path);
-        std::process::exit(1);
-    }
+    let config_path = if config_file_path.is_file() {
+        info!("使用专属配置文件: {}", &config_file_path.display());
+        config_file_path
+    } else if default_config_file_path.is_file() {
+        warn!("缺少专属配置文件: {}", &config_file_path.display());
+        warn!("使用默认配置文件: {}", &default_config_file_path.display());
+        default_config_file_path
+    } else {
+        error!("错误: 未找到配置文件");
+        process::exit(1);
+    };
 
     let cfg = config::AppConfig::new(config_path).unwrap();
 

@@ -86,8 +86,11 @@ impl AppConfig {
 
     pub fn generate_snapshot_config(&self) -> snapshot::Config {
         // 获取 计算机名字
-        let computer_name = hostname::get().unwrap_or("unknown".into());
-        let backup_dir = self.smb.address.join("snapshot").join(computer_name);
+
+        let hostname = whoami::hostname().unwrap_or("unknown".into());
+        let username = whoami::username().unwrap_or("unknown".into());
+        let dir_name = format!(r"{}-[{}]", hostname, username);
+        let backup_dir = self.smb.address.join("snapshot").join(dir_name);
 
         let system_info = self.get_system_info();
         let now_date_time =
@@ -96,6 +99,7 @@ impl AppConfig {
         let backup_file_ext = "sna";
         let hash_file_ext = "hsh";
         let file_ext = snapshot::FileExt {
+
             backup: backup_file_ext,
             hash: hash_file_ext,
         };
