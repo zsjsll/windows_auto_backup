@@ -3,7 +3,6 @@ extern crate tracing;
 
 mod lib {
     pub mod config;
-
     pub mod files;
     pub mod logs;
     pub mod smb;
@@ -24,9 +23,9 @@ fn create_config_file(template_path: &Path, destination_dir: &Path) -> Result<Pa
     let config_path = destination_dir.join(config_name);
 
     if !config_path.exists() {
-        warn!("缺少专属配置文件: {}", &config_path.display());
-        warn!("使用默认配置文件: {} 进行创建", &template_path.display());
-        fs::copy(&template_path, &config_path)?;
+        warn!("缺少专属配置文件: {}", config_path.display());
+        warn!("使用默认配置文件: {} 进行创建", template_path.display());
+        fs::copy(template_path, &config_path)?;
     }
     Ok(config_path)
 }
@@ -36,10 +35,10 @@ fn backup_config(
     destination_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let config_bak_dir = destination_dir.join("bak");
-    fs::create_dir_all(&config_bak_dir).ok();
+    fs::create_dir_all(&config_bak_dir)?;
     let config_file_name = config_path
         .file_name()
-        .ok_or_else(|| format!("无法找到文件名字: {}", config_path.display()))?;
+        .ok_or_else(|| format!("无法获取配置文名: {}", config_path.display()))?;
 
     let config_bak_path = config_bak_dir.join(config_file_name);
 
