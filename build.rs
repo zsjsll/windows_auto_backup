@@ -9,8 +9,8 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-const CONFIG_PATH: &str = r"config\default.toml";
-const BAK_PATH: &str = "config.toml.bak";
+const CONFIG_PATH: &str = r"config\@template.toml";
+const BAK_PATH: &str = "config.toml";
 
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));

@@ -44,14 +44,7 @@ struct SnapshotConfig {
 }
 
 impl AppConfig {
-    #[instrument(err(Display), level = "debug")]
     pub fn new(path: impl AsRef<Path> + Debug) -> Result<Self, Box<dyn std::error::Error>> {
-        info!(
-            "正在加载自定义 TOML 配置文件, 路径: {}",
-            path.as_ref().display()
-        );
-
-        // 🌟 2. 读文件：如果翻车，用 map_err 物理拦截，打印最纯净的多行文本错误，然后用 ? 拍扁往上抛
         let config_content = fs::read_to_string(path).inspect_err(|_| {
             error!("读取配置文件失败");
         })?;
@@ -60,7 +53,6 @@ impl AppConfig {
         let config: Self = toml::from_str(&config_content).inspect_err(|_| {
             error!("TOML 语法解析失败");
         })?;
-
         Ok(config)
     }
 
@@ -99,7 +91,6 @@ impl AppConfig {
         let backup_file_ext = "sna";
         let hash_file_ext = "hsh";
         let file_ext = snapshot::FileExt {
-
             backup: backup_file_ext,
             hash: hash_file_ext,
         };

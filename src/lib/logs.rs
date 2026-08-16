@@ -62,15 +62,16 @@ impl Logs {
         }
     }
 
-    pub fn update_logger_level(&self, config: &Config) {
-        let new_filter = EnvFilter::new(&*config.log_level);
+    pub fn update_logger_level(
+        &self,
+        config: &Config,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let new_filter = EnvFilter::new(config.log_level.as_str());
 
-        // 🌟 绝杀：拉动电闸，原地在线修改全局生效的日志等级！
-        if self.log_handle.reload(new_filter).is_ok() {
-            info!(
-                "日志等级已动态同步为 config.toml 配置: {}",
-                config.log_level.as_str()
-            );
-        };
+        self.log_handle.reload(new_filter)?;
+
+        info!("根据配置文件, 加载日志级别为: {}", config.log_level);
+
+        Ok(config.log_level.to_string())
     }
 }

@@ -27,14 +27,15 @@ impl Deref for Smb {
 }
 
 impl Smb {
-    #[instrument(err(Display), level = "debug")]
-    pub fn connect(&self) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    pub fn connect(&self) -> Result<(), Box<dyn std::error::Error>> {
         let add = self.address.to_string_lossy();
         if add.is_empty() {
-            return Err("地址为空, 无法备份".into());
+            return Err("请检查配置文件, 地址为空, 无法备份".into());
         }
-
-        info!("正在建立 SMB 认证通道");
+        if !add.starts_with(r"\\") {
+            warn!("检查到为本地备份");
+            return Ok(());
+        }
 
         let output = Command::new("net")
             .arg("use")
@@ -48,21 +49,15 @@ impl Smb {
 
         if output.status.success() {
             info!("SMB 认证成功");
-            Ok(self.address.clone())
+            Ok(())
         } else {
             let (err_msg, _, _) = encoding_rs::GBK.decode(&output.stderr);
-            error!("Windows SMB 认证失败");
-
-            if !add.starts_with(r"\\") {
-                warn!("检查到为本地备份");
-                return Ok(self.address.clone());
-            }
-            Err(err_msg.replace("\n", "").replace("\r", "").trim().into())
+            let err_msg = err_msg.replace("\n", "").replace("\r", "");
+            let err_msg = format!("Windows SMB 认证失败: {}", err_msg.trim());
+            Err(err_msg.into())
         }
     }
 
-    /// 运维好习惯：断开与该远程服务器的所有隐式连接
-    #[instrument(err(Display), level = "debug")]
     pub fn disconnect(&self) -> Result<(), Box<dyn std::error::Error>> {
         if !self.address.to_string_lossy().starts_with(r"\\") {
             return Ok(());
@@ -74,10 +69,13 @@ impl Smb {
             .output()?;
 
         if output.status.success() {
+            info!("已断开 SMB 连接");
             Ok(())
         } else {
             let (err_msg, _, _) = encoding_rs::GBK.decode(&output.stderr);
-            Err(err_msg.replace("\n", "").replace("\r", "").trim().into())
+            let err_msg = err_msg.replace("\n", "").replace("\r", "");
+            let err_msg = format!("断开 SMB 连接失败: {}", err_msg.trim());
+            Err(err_msg.into())
         }
     }
 }

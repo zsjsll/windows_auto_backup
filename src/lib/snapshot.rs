@@ -142,10 +142,8 @@ impl Snapshot {
         Ok(())
     }
 
-    #[instrument(err(Display), level = "debug")]
     pub fn init_backup(&self) -> Result<(), Box<dyn std::error::Error>> {
         // 获取最新文件的信息
-        info!("开始初始化");
         let latest_backup_file = Files::new(&self.backup_dir).get_latest_file(self.file_ext.backup);
         let latest_backup_file_path = latest_backup_file
             .as_ref()
@@ -177,7 +175,7 @@ impl Snapshot {
         // 归档失败不影响程序的继续执行, 但是应该把错误报出来
         info!("检查是否需要归档");
         self.check_backup_dir().inspect_err(|e| warn!("{e}")).ok();
-
+        info!("初始化已完成");
         Ok(())
     }
     #[instrument(err(Display), level = "debug")]

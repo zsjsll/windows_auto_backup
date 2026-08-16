@@ -41,8 +41,8 @@
     {
       "label": "4.复制配置文件夹",
       "type": "shell",
-      "command": "copy",
-      "args": ["/Y", "config.toml.bak", "deploy\\config.toml"],
+      "command": "xcopy",
+      "args": ["/E", "/Y", "config", "deploy\\config\\"],
       "problemMatcher": []
     },
 
