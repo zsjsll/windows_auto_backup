@@ -2,9 +2,14 @@
 
 调用 snapshot64.exe 自动备份系统
 
-## 使用方式
+## 调试
 
-1. 把 `config.toml.bak` 改名为 `config.toml`
-2. cmd 中运行 `deploy.cmd` 编译到 deploy 文件夹下
+1. `cargo build` 会根据 `config.toml.bak` 在根目录下生成 `config/default.toml`
 
-具体参数查看 `config.toml.bak`
+2. 运行程序 会根据 `config/default.toml` 生成文件 `config/{主机名}-{[用户名]}.toml` 配置文件, 程序根据此文件运行
+
+3. 运行成功后会生成 `config/bak/config/{主机名}-{[用户名]}.toml` 进行备份
+
+## 编译
+
+直接运行 vscode 的tasks 所有需要文件 打包到 `deploy/`

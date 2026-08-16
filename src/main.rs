@@ -10,7 +10,7 @@ mod lib {
     pub mod snapshot;
 }
 
-use std::{fs, path::PathBuf, process};
+use std::{fs, path::PathBuf};
 
 use lib::{config, files, logs, smb, snapshot};
 
@@ -18,20 +18,22 @@ fn main() {
     let logs = logs::Logs::new();
 
     let config_dir = PathBuf::from("config");
-
     let default_config_path = config_dir.join("default.toml");
+
     let hostname = whoami::hostname().unwrap_or("unknown".into());
     let username = whoami::username().unwrap_or("unknown".into());
     let config_name = format!(r"{}-[{}].toml", hostname, username);
     let config_path = config_dir.join(config_name);
 
-    let config_path = if default_config_path.is_file() {
+    if !config_path.exists() {
         warn!("缺少专属配置文件: {}", &config_path.display());
-        warn!("使用默认配置文件: {}", &default_config_path.display());
-        default_config_path
-    } else {
-        process::exit(1);
-    };
+        warn!(
+            "使用默认配置文件: {} 进行创建",
+            &default_config_path.display()
+        );
+
+        fs::copy(&default_config_path, &config_path).unwrap();
+    }
 
     let cfg = config::AppConfig::new(&config_path).unwrap();
 
