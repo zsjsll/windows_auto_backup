@@ -4,7 +4,7 @@
   "tasks": [
     {
       "label": "总任务（依赖链）",
-      "dependsOn": ["构建&复制", "复制配置文件", "复制bin文件夹"],
+      "dependsOn": ["构建&复制", "复制配置文件", "复制bin文件夹", "复制vbs脚本"],
       "dependsOrder": "parallel", // 并行执行
       "problemMatcher": []
     },
@@ -45,7 +45,15 @@
       "label": "复制bin文件夹",
       "type": "shell",
       "command": "xcopy",
-      "args": ["/E", "/Y", "bin", "deploy\\bin\\"],
+      "args": ["/E", "/I", "/Y", "bin", "deploy\\bin\\"],
+      "problemMatcher": []
+    },
+
+    {
+      "label": "复制vbs脚本",
+      "type": "shell",
+      "command": "xcopy",
+      "args": ["/E", "/I", "/Y", "vbs", "deploy\\vbs\\"],
       "problemMatcher": []
     }
   ]
