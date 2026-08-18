@@ -1,4 +1,4 @@
-log_level = "debug"
+log_level = "info"
 
 
 # SMB 服务器相关配置区块
