@@ -509,6 +509,7 @@ dependencies = [
  "tracing-appender",
  "tracing-subscriber",
  "whoami",
+ "windows-sys 0.61.2",
  "windows-version",
  "winres",
 ]
