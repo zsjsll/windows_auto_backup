@@ -1,4 +1,7 @@
-use std::{io::Write, sync::Arc};
+use std::{
+    io::{IsTerminal, Write},
+    sync::Arc,
+};
 
 use tracing_appender::{
     non_blocking::WorkerGuard,
@@ -31,7 +34,7 @@ impl Logs {
         let (non_blocking, file_guard) = tracing_appender::non_blocking(file_appender);
 
         let mut writer = non_blocking.clone();
-        let _ = writer.write_all(b"\n\n");
+        writer.write_all(b"\n\n").ok();
 
         let timer_format =
             time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
@@ -43,6 +46,7 @@ impl Logs {
                 fmt::layer()
                     .with_timer(custom_timer.clone())
                     .pretty()
+                    .with_ansi(std::io::stdout().is_terminal())
                     .with_writer(std::io::stdout),
             ) // 刷到你的 CLI 黑色窗口
             .with(

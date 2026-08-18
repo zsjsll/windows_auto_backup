@@ -13,3 +13,9 @@
 ## 编译
 
 直接运行 vscode 的tasks 所有需要文件 打包到 `deploy/`
+
+
+
+双击运行 编译后的二进制文件 rust_snapshot_backup.exe 会显示  [32m、[0m、[1;32m 的字符
+但是 在ide中 运行 就是正常的颜色
+我需要解决这个问题
