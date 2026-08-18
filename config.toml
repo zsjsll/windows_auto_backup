@@ -30,15 +30,15 @@ exclude = [
   # '\hiberfil.sys',
   # '\swapfile.sys',
   # '\temp',
-  '\*.tmp',
-  '%temp%\*',
+  # '\*.tmp',
+  # '%temp%\*',
   # '\Windows\Temp\*',
   # '\$Recycle.Bin\*',
-  # '\System Volume Information\*',
-  # '\Windows\SoftwareDistribution\Download\*',
-  # '\$WINDOWS.~BT\*',
-  # '\$WINDOWS.~WS\*',
-  # '\Windows.old\*',
+  '\System Volume Information\*',
+  '\Windows\SoftwareDistribution\Download\*',
+  '\$WINDOWS.~BT\*',
+  '\$WINDOWS.~WS\*',
+  '\Windows.old\*',
 ]
 # exclude = []
 
